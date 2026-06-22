@@ -1,0 +1,15 @@
+{
+  "name": "@rap/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "RAP backend API service (stub at C0; seeded later). Reuses @rap/engine for all methodology.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@rap/engine": "*"
+  }
+}

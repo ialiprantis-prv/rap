@@ -1,0 +1,10 @@
+{
+  "name": "@rap/frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "RAP frontend (stub at C0; seeded at the frontend rung). Will reuse @rap/engine for all methodology.",
+  "dependencies": {
+    "@rap/engine": "*"
+  }
+}

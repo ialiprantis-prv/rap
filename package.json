@@ -1,0 +1,29 @@
+{
+  "name": "rap",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PRIVACT Risk Assessment Platform (v4) — npm-workspaces monorepo. Shared TS engine kernel reused by server + browser.",
+  "workspaces": [
+    "engine",
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.0.0",
+    "eslint": "^10.5.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1",
+    "vitest": "^4.1.9"
+  }
+}

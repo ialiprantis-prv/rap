@@ -1,0 +1,19 @@
+{
+  "name": "@rap/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PRIVACT methodology kernel — the single source of truth for risk computation (server + browser).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  }
+}
