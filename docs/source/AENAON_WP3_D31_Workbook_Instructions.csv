@@ -1,0 +1,12 @@
+AENAON WP3 - D3.1 Service & Tool Input Workbook,
+Input collection workbook for D3.1 Preparedness Support and Consultancy Services V1.,
+,
+Purpose,"Collect structured inputs from WP3 service/tool owners for D3.1, including customisation scope, dependencies, integration/API capabilities, deployment options, evidence, documentation, licensing/access constraints and reusable D3.1 summary text."
+How to complete,"Review the pre-filled Register. Complete the rows corresponding to your tool/service in Service Input, Integration & Deployment, Licensing & Access and D3.1 Summary."
+Multiple dependencies,"In the Dependencies tab, add one row per dependency or open issue. Multiple rows per tool are expected. Use the Tool ID dropdown to link each row to the relevant tool."
+Multiple evidence items,"In the Evidence & Documentation tab, add one row per evidence item or documentation item. Multiple rows per tool are expected."
+Use of dropdowns,Use the configured dropdowns where available. Use 'To be clarified' where an answer is not yet known.
+Do not delete,Do not delete tabs or columns. Add additional rows where needed.
+D3.1 framing,"D3.1 is the V1 demonstrator/service-package baseline and accompanying evidence report. It should document what is available for V1, what assumptions are used, and what remains to be clarified after D3.1."
+,
+NOTE,"Only the 'Instructions' sheet was provided. The tool-specific tabs (Service Input, Integration & Deployment, Licensing & Access, Dependencies, Evidence & Documentation, D3.1 Summary) for the PRV Risk Assessment Platform are NOT yet captured here — export those rows to CSV and add to this folder when available."

@@ -5,6 +5,8 @@ npm-workspaces monorepo for the AENAON EU H2020 cybersecurity project
 **single shared methodology engine** — the v3 PRIVACT kernel ported verbatim, so
 server and browser compute identical risk with zero drift.
 
+Documentation: see [`docs/`](docs/) — V4 docs (start at [`docs/README.md`](docs/README.md)), authoritative source specs in [`docs/source/`](docs/source/), and the frozen v3 set in [`docs/archive/v3-reference/`](docs/archive/v3-reference/).
+
 ## Workspaces
 
 | Package         | Role                                                                 |
