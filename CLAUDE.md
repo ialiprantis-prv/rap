@@ -45,12 +45,23 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   Mitigations→Dashboard→Export (+ new Dependencies & Cascading screen).
 
 ## Current state
-- Branch main. Remote: ialiprantis-prv/rap (private).
+- Branch main. Remote: ialiprantis-prv/rap (private). C0 + C0.1 pushed (origin/main).
 - C0 DONE (committed): scaffold monorepo + engine kernel ported verbatim from v3; parity tests
   green. Severity = round(CVSS/2) (v3 C4 live rule).
 - C0.1 DONE (committed): clean V4 docs + frozen v3 archive + this CLAUDE.md.
-- NEXT: C1 — engine cascading layer (graph, per-CIA τ, max-path, Total_d, raw+residual, §8.6
-  acceptance test). See docs/build-ladder.md.
+- NEXT: C1 — engine cascading layer. SPEC-LOCKED (pending build), decisions:
+  1. Engine consumes a flat unified DependencyEdge[]; containment-edge derivation deferred to
+     the backend (engine stays graph-pure; no Asset kernel-type change).
+  2. API: pure core propagate(edges, sourceRiskByAsset, dim) + triplet-ingesting reducers
+     (sourceRiskFromTriplets raw / residualSourceRiskFromTriplets via residualTripletRisk) so
+     source-risk reduction stays engine methodology.
+  3. Algorithm: DFS max-product per dim, per-traversal visited-set (cycle-safe, no length cap),
+     winning path recorded (doc-sanctioned "or DFS").
+  4. CascadingRisk_d / Total_d are exact floats (no engine rounding); display rounding is FE.
+  - TAU_DEFAULTS + EDGE_TYPES in engine/constants.ts; effective tau_d = override_d ??
+    default; tau_d=0 drops the edge for d; deterministic tie-break (source assetId asc, then
+    edge order). §8.6 (Edge Node -> Data Manager = 24) is the acceptance test.
+  See docs/cascading-risk.md + docs/build-ladder.md §C1.
 
 ## Quick start
 - npm install at repo root (workspaces). engine/: npm run build / npm test.
