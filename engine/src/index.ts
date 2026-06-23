@@ -51,6 +51,7 @@ export {
   propagateAll,
   sourceRiskFromTriplets,
   residualSourceRiskFromTriplets,
+  cascadeFromTriplets,
 } from './methodology/cascading';
 export type {
   DerivedTriplet,

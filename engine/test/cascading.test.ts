@@ -13,6 +13,7 @@ import {
   residualSourceRiskFromTriplets,
   type DependencyEdge,
   type DerivedTriplet,
+  type MitigationRecord,
 } from '../src/index';
 
 /** Minimal DerivedTriplet stub — only the fields the source-risk reducer reads. */
@@ -127,7 +128,28 @@ describe('sourceRiskFromTriplets', () => {
 });
 
 describe('residualSourceRiskFromTriplets', () => {
-  it('is stubbed for C1b', () => {
-    expect(() => residualSourceRiskFromTriplets([], () => undefined)).toThrow('C1b');
+  const rt = (assetId: string, severity: number | undefined): DerivedTriplet =>
+    ({
+      assetId,
+      threatCia: { c: false, i: false, a: true },
+      impact: { c: 0, i: 0, a: 3 },
+      probability: 2,
+      severity,
+    }) as unknown as DerivedTriplet;
+  const harden: MitigationRecord = {
+    assetId: 'a',
+    cveId: 'X',
+    countermeasures: [{ techniqueId: 'D3', tacticId: 'Harden', effectivenessDefault: -2 }],
+  };
+
+  it('reduces source risk by the strongest countermeasure (severity-only)', () => {
+    expect(residualSourceRiskFromTriplets([rt('a', 5)], () => harden).A.get('a')).toBe(18); // 3 x 2 x (5-2)
+  });
+  it('remediated instance -> 0', () => {
+    const rec: MitigationRecord = { assetId: 'a', cveId: 'X', remediate: {}, countermeasures: [] };
+    expect(residualSourceRiskFromTriplets([rt('a', 5)], () => rec).A.get('a')).toBe(0);
+  });
+  it('indeterminate severity (no remediation) -> 0', () => {
+    expect(residualSourceRiskFromTriplets([rt('a', undefined)], () => undefined).A.get('a')).toBe(0);
   });
 });

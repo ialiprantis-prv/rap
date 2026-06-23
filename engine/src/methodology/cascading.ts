@@ -27,6 +27,7 @@ import type {
   CascadingResult,
 } from '../types/cascading';
 import type { DerivedTriplet } from './deriveTriplets';
+import { residualTripletRisk } from './residual';
 import { RISK_SCALE_MAX, TAU_DEFAULTS } from '../constants';
 
 const CIA_DIMS: readonly CiaDim[] = ['C', 'I', 'A'];
@@ -136,13 +137,40 @@ export function sourceRiskFromTriplets(
   return out;
 }
 
-/** RESIDUAL source-risk reducer. Signature locked in C1a; behaviour lands in
- *  C1b (residual cascading pass). */
+/** Per-asset, per-dim RESIDUAL source risk = max of the asset's residual triplet
+ *  risk (kernel residualTripletRisk; severity-only mitigation). recByTriplet
+ *  supplies each triplet's mitigation record (caller-resolved; engine stays pure).
+ *  Remediated/indeterminate triplets carry 0 and drop out of the max (per D5). */
 export function residualSourceRiskFromTriplets(
   triplets: DerivedTriplet[],
   recByTriplet: (t: DerivedTriplet) => MitigationRecord | undefined,
 ): Record<CiaDim, Map<string, number>> {
-  void triplets;
-  void recByTriplet;
-  throw new Error('residual cascading: C1b');
+  const out: Record<CiaDim, Map<string, number>> = {
+    C: new Map(),
+    I: new Map(),
+    A: new Map(),
+  };
+  for (const t of triplets) {
+    const r = residualTripletRisk(t, recByTriplet(t));
+    const perDim: Record<CiaDim, number> = { C: r.riskC, I: r.riskI, A: r.riskA };
+    for (const d of CIA_DIMS) {
+      const prev = out[d].get(t.assetId);
+      if (prev === undefined || perDim[d] > prev) out[d].set(t.assetId, perDim[d]);
+    }
+  }
+  return out;
+}
+
+/** One-call convenience: reduce triplets to per-CIA source risk, then propagate
+ *  over the dependency graph. Omit recByTriplet for the RAW cascade; pass it for
+ *  the RESIDUAL cascade. */
+export function cascadeFromTriplets(
+  edges: DependencyEdge[],
+  triplets: DerivedTriplet[],
+  recByTriplet?: (t: DerivedTriplet) => MitigationRecord | undefined,
+): Record<CiaDim, Map<string, CascadingResult>> {
+  const sourceRiskByDim = recByTriplet
+    ? residualSourceRiskFromTriplets(triplets, recByTriplet)
+    : sourceRiskFromTriplets(triplets);
+  return propagateAll(edges, sourceRiskByDim);
 }
