@@ -4,12 +4,20 @@
 
 ## Current state
 
-C0 is committed: the rap/ monorepo is scaffolded with npm workspaces; the shared engine
-kernel is ported verbatim from v3 (risk derivation, severity = round(CVSS/2), residual
-severity-only, probability + zone suggestion, impact, deriveTriplets) with v3 parity tests.
-Backend and frontend are stubbed.
+C0, C0.1, and C1a are committed and pushed (origin/main, ialiprantis-prv/rap).
 
-C0.1 is in progress: this clean V4 doc set and a frozen v3 archive reference.
+C0: the rap/ monorepo is scaffolded with npm workspaces; the shared engine kernel is ported
+verbatim from v3 (risk derivation, severity = round(CVSS/2), residual severity-only,
+probability + zone suggestion, impact, deriveTriplets) with v3 parity tests. Backend and
+frontend are stubbed.
+
+C0.1: this clean V4 doc set and a frozen v3 archive reference.
+
+C1 is spec-locked and split. C1a (committed) adds the engine-pure cascading RAW pass: flat
+DependencyEdge graph, per-CIA tau (TAU_DEFAULTS + EDGE_TYPES), DFS max-product propagation
+(per-traversal visited-set, cycle-safe, no length cap), winning contributing path, and
+Total_d = min(80, max(individual, cascading)) as exact floats; raw source risk from in-scope
+triplets; the §8.6 worked example passes (=24). C1b (next) adds the residual pass.
 
 ---
 
@@ -89,22 +97,32 @@ Scaffold rap/ npm-workspaces monorepo. Port the shared engine kernel verbatim fr
 lib/* (risk, severity = round(CVSS/2), residual severity-only, probability + zone,
 impact, deriveTriplets). Write v3 parity unit tests. Stub backend and frontend packages.
 
-### C0.1 (in progress)
+### C0.1 (committed)
 
 Write this clean V4 doc set (7 files in docs/). Archive a reference copy of the v3
-docs for historical rationale. Push the C0 + C0.1 pair on approval.
+docs for historical rationale. Pushed with C0.
 
-### C1
+### C1 (split: C1a committed, C1b next)
 
-Engine cascading layer. Implement in engine/:
-- Dependency graph build from DependencyEdge + parent_ref containment links.
-- Per-CIA tau transmission coefficients, default by edge type, overridable.
-- Max-product path propagation (Dijkstra/-log(tau) weights).
-- CascadingRisk_d per asset, Total_d = min(80, max(individual, cascading)).
-- Raw and residual propagation (source risk from residual triplets for the residual pass).
-- Contributing path recording per (asset, dimension).
-- Cycle handling (reachability DAG, visited-node tracking).
-- Acceptance test: the Edge Node / Data Manager worked example from cascading-risk.md.
+Engine-pure cascading layer in engine/. Locked decisions D1-D5:
+- D1: engine consumes a flat DependencyEdge[] (from -> to); containment/parent_ref edge
+  derivation is deferred to the backend. No Asset kernel-type change.
+- D2: pure core propagate(edges, sourceRiskByAsset, dim) per dimension, plus methodology-aware
+  reducers sourceRiskFromTriplets (raw) and residualSourceRiskFromTriplets (residual).
+- D3: DFS max-product per dim, per-traversal visited-set (cycle-safe, NO length cap); effective
+  tau_d = override ?? TAU_DEFAULTS[type][d]; tau_d = 0 drops the edge for d; exact floats;
+  deterministic tie-break (source assetId asc, then edge order); winning path recorded.
+- D4: CascadingRisk_d over upstream sources only (no self-cascade); Total_d = min(80,
+  max(IndividualRisk_d, CascadingRisk_d)).
+- D5: indeterminate source triplets contribute 0 to source risk; V1 does not propagate an
+  indeterminate cascading state.
+
+C1a (committed): types/cascading.ts + constants (TAU_DEFAULTS, EDGE_TYPES) + propagate/
+propagateAll + sourceRiskFromTriplets (raw) + residual reducer signature stub; full invariant
+suite + the §8.6 acceptance test (Edge Node -> Data Manager, tau_A=0.8 = 24).
+
+C1b (next): residualSourceRiskFromTriplets behaviour (source risk from residualTripletRisk) +
+residual propagation pass + tests.
 
 ### C2
 
