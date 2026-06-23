@@ -4,6 +4,8 @@
 // methodology cannot drift across the modules that consume it.
 
 import type { D3fendTactic } from './types/mitigation';
+import type { CiaDim } from './types/threat';
+import type { EdgeType } from './types/cascading';
 
 /** Risk scale ceiling: max product 1 x 4 x 4 x 5 = 80. */
 export const RISK_SCALE_MAX = 80;
@@ -41,4 +43,20 @@ export const ZONE_EXPOSURE: Record<string, number> = {
   'L3.5 DMZ': 0,
   'L4 Enterprise': 1,
   'L5 Internet/Cloud': 1,
+};
+
+// --- Cascading-risk layer (V4, additive; does NOT touch the triplet formula) ---
+
+/** Canonical dependency-edge kinds. */
+export const EDGE_TYPES: readonly EdgeType[] =
+  ['hosted-on', 'reads-data-from', 'authenticates-via', 'depends-on'] as const;
+
+/** Per-CIA transmission coefficients (tau) per edge type. Effective tau =
+ *  edge.tau?.[d] ?? TAU_DEFAULTS[type][d]; tau_d = 0 drops the edge for that
+ *  dimension. PRIVACT modelling choice (docs/cascading-risk.md §6). */
+export const TAU_DEFAULTS: Record<EdgeType, Record<CiaDim, number>> = {
+  'hosted-on': { C: 0.3, I: 0.4, A: 0.8 },
+  'reads-data-from': { C: 0.9, I: 0.8, A: 0.3 },
+  'authenticates-via': { C: 0.8, I: 0.8, A: 0.4 },
+  'depends-on': { C: 0.5, I: 0.5, A: 0.5 },
 };

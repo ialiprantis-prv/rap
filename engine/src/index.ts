@@ -4,6 +4,7 @@
 
 // --- constants (single source of truth for the numeric kernel) ---
 export { RISK_SCALE_MAX, BAND_THRESHOLDS, TACTIC_EFFECT, PROB_BASELINE, ZONE_EXPOSURE } from './constants';
+export { EDGE_TYPES, TAU_DEFAULTS } from './constants';
 
 // --- types ---
 export type { CiaDim, CvssSeverity } from './types/threat';
@@ -38,6 +39,19 @@ export {
 } from './methodology/residual';
 export type { ResidualAggregate } from './methodology/residual';
 export { deriveTriplets, effectiveSeverity } from './methodology/deriveTriplets';
+export type {
+  EdgeType,
+  DependencyEdge,
+  CascadingPathStep,
+  CascadingResult,
+} from './types/cascading';
+export {
+  effectiveTau,
+  propagate,
+  propagateAll,
+  sourceRiskFromTriplets,
+  residualSourceRiskFromTriplets,
+} from './methodology/cascading';
 export type {
   DerivedTriplet,
   DeriveTripletsParams,
