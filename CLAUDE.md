@@ -45,7 +45,7 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   Mitigations→Dashboard→Export (+ new Dependencies & Cascading screen).
 
 ## Current state
-- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = e6c85f2.
+- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = 2aaf464.
 - C0 DONE (committed): scaffold monorepo + engine kernel ported verbatim from v3; parity tests
   green. Severity = round(CVSS/2) (v3 C4 live rule).
 - C0.1 DONE (committed): clean V4 docs + frozen v3 archive + this CLAUDE.md.
@@ -60,10 +60,17 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   with org_id on every row; Zod at boundaries; env config; esbuild single-file bundle (engine
   inlined) + tsx dev; drizzle-kit migrations applied at startup. Gate 4.5 step 4 (backend API
   smoke, Fastify inject) is LIVE. Endpoints OPEN — locked down in C3.
-- NEXT: C3 — authentication + identity (NOT yet spec-locked; pre-screen pending). Scope per
-  build-ladder §C3: API keys (hashed, revocable, never logged/exported); built-in username/
-  password accounts; login session (httpOnly cookie); four roles enforced server-side on every
-  call; offline signed license verification at startup. See build-ladder.md §C3 + architecture.md.
+- C3 IN PROGRESS — authentication + identity, sliced C3a/C3b/C3c (pre-screen locked).
+  - C3a DONE (committed): authN substrate. users/sessions/api_keys tables (org_id on every row,
+    sessions FK-cascade); scrypt password hashing (PHC-style, timing-safe, no native module) +
+    SHA-256 API-key hashing (rap_<keyId>_<secret>, constant-time); server-side sessions in a signed
+    httpOnly cookie (SameSite=Lax, Secure-in-prod, absolute 8h + idle 1h), role/disable resolved
+    live per request; POST /login (generic 401, no enumeration), POST /logout, GET /me,
+    POST /me/password; fail-closed first-boot PRV super-admin seed. Endpoints OPEN — gated in C3b.
+  - NEXT: C3b — authorization. Four roles enforced server-side on every route (public allowlist for
+    /health + /login); API-key issue/verify endpoints (keyId underscore-free); global
+    must_change_password gating; login rate-limit/lockout. Then C3c: offline signed-license
+    verification at startup. See build-ladder.md §C3 + architecture.md.
 
 ## Quick start
 - npm install at repo root (workspaces). engine/: npm run build / npm test.

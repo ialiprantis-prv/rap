@@ -4,7 +4,7 @@
 
 ## Current state
 
-C0, C0.1, C1 (a+b), and C2 are committed and pushed (origin/main, ialiprantis-prv/rap).
+C0, C0.1, C1 (a+b), C2, and C3a are committed and pushed (origin/main, ialiprantis-prv/rap).
 
 C0: the rap/ monorepo is scaffolded with npm workspaces; the shared engine kernel is ported
 verbatim from v3 (risk derivation, severity = round(CVSS/2), residual severity-only,
@@ -24,6 +24,13 @@ C2 (complete): backend bootstrap. Fastify importing @rap/engine; SQLite via Driz
 better-sqlite3 behind a repository layer (Postgres swaps in via DATABASE_URL); Assessment CRUD
 with org_id on every row; Zod validation; env config; esbuild single-file bundle (engine
 inlined) with tsx dev; drizzle-kit migrations applied at startup. Endpoints open; C3 locks them.
+
+C3a (complete): authN substrate. users/sessions/api_keys tables (org_id on every row, sessions
+FK-cascade); scrypt password hashing (PHC-style, timing-safe, no native module) and SHA-256
+API-key hashing (rap_<keyId>_<secret>, constant-time compare); server-side sessions in a signed
+httpOnly cookie (SameSite=Lax, Secure-in-prod, absolute 8h + idle 1h), role/disable resolved live
+per request; POST /login (generic 401, no enumeration) / POST /logout / GET /me / POST /me/password;
+fail-closed first-boot PRV super-admin seed. Endpoints remain open — C3b adds enforcement.
 
 ---
 
@@ -136,12 +143,27 @@ Backend bootstrap and database layer. Node/TS server, SQLite default (Postgres o
 via connection-string config). Assessment CRUD endpoints. Single-tenant schema, org_id
 stamped on all records.
 
-### C3
+### C3 (sliced C3a/C3b/C3c)
 
-Authentication. API keys: generated, hashed (bcrypt or Argon2), stored server-side,
-revocable, never logged or exported. Built-in username/password accounts, bcrypt passwords.
-Login session (httpOnly cookie). Four roles enforced server-side on every API call.
-Offline signed license file verification at startup (public key embedded in the image).
+Authentication and identity, split into three independently gate-able rungs.
+
+C3a (committed): authN substrate. Built-in username/password accounts with scrypt hashing
+(Node built-in crypto.scrypt, PHC-style, timing-safe) — chosen over bcrypt/Argon2 to avoid a
+second native module and keep the air-gapped image lean. API keys issued as rap_<keyId>_<secret>
+and stored SHA-256-hashed (a fast hash is correct for a 256-bit random token; constant-time
+compare), revocable, never logged or exported. Server-side login session in a signed httpOnly
+cookie (SameSite=Lax, Secure-in-prod, absolute 8h + idle 1h), role/disable resolved live per
+request. Fail-closed first-boot PRV super-admin seed (env-provided, must_change_password).
+Endpoints remain open.
+
+C3b: authorization. Four roles enforced server-side on every route (public allowlist for /health
+and /login); API-key issue/verify endpoints (keyId generated underscore-free so the base64url
+secret parses unambiguously); global must_change_password gating; login rate-limit/lockout.
+This rung flips the system open -> locked.
+
+C3c: offline signed license-file verification at startup (public key embedded in the image;
+customer identity, expiry, seat count; no phone-home; a deployment without a valid license does
+not start).
 
 ### C4
 
