@@ -8,6 +8,13 @@
       "when": 1782281616166,
       "tag": "0000_shiny_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1782300105850,
+      "tag": "0001_bumpy_newton_destine",
+      "breakpoints": true
     }
   ]
 }

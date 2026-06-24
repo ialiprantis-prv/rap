@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "RAP backend API service (C2). Reuses @rap/engine for all methodology.",
+  "description": "RAP backend API service (C3a). Reuses @rap/engine for all methodology.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@rap/engine": "*",
     "better-sqlite3": "^12.11.1",
     "drizzle-orm": "^0.45.2",
