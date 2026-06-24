@@ -45,23 +45,25 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   Mitigations→Dashboard→Export (+ new Dependencies & Cascading screen).
 
 ## Current state
-- Branch main. Remote: ialiprantis-prv/rap (private). C0 + C0.1 pushed (origin/main).
+- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = e6c85f2.
 - C0 DONE (committed): scaffold monorepo + engine kernel ported verbatim from v3; parity tests
   green. Severity = round(CVSS/2) (v3 C4 live rule).
 - C0.1 DONE (committed): clean V4 docs + frozen v3 archive + this CLAUDE.md.
-- NEXT: C1 — engine cascading layer. SPEC-LOCKED (pending build), decisions:
-  1. Engine consumes a flat unified DependencyEdge[]; containment-edge derivation deferred to
-     the backend (engine stays graph-pure; no Asset kernel-type change).
-  2. API: pure core propagate(edges, sourceRiskByAsset, dim) + triplet-ingesting reducers
-     (sourceRiskFromTriplets raw / residualSourceRiskFromTriplets via residualTripletRisk) so
-     source-risk reduction stays engine methodology.
-  3. Algorithm: DFS max-product per dim, per-traversal visited-set (cycle-safe, no length cap),
-     winning path recorded (doc-sanctioned "or DFS").
-  4. CascadingRisk_d / Total_d are exact floats (no engine rounding); display rounding is FE.
-  - TAU_DEFAULTS + EDGE_TYPES in engine/constants.ts; effective tau_d = override_d ??
-    default; tau_d=0 drops the edge for d; deterministic tie-break (source assetId asc, then
-    edge order). §8.6 (Edge Node -> Data Manager = 24) is the acceptance test.
-  See docs/cascading-risk.md + docs/build-ladder.md §C1.
+- C1 DONE (committed): engine cascading layer COMPLETE.
+  - C1a: raw — propagate/propagateAll/sourceRiskFromTriplets; DFS max-product per CIA;
+    per-traversal visited-set (cycle-safe, no length cap); winning path; exact floats;
+    §8.6 Edge Node -> Data Manager = 24 acceptance test green.
+  - C1b: residual — residualSourceRiskFromTriplets (source risk via kernel residualTripletRisk)
+    + cascadeFromTriplets one-call helper.
+- C2 DONE (committed): backend bootstrap. Fastify importing @rap/engine; SQLite via Drizzle +
+  better-sqlite3 behind a repository layer (Postgres-swappable via DATABASE_URL); Assessment CRUD
+  with org_id on every row; Zod at boundaries; env config; esbuild single-file bundle (engine
+  inlined) + tsx dev; drizzle-kit migrations applied at startup. Gate 4.5 step 4 (backend API
+  smoke, Fastify inject) is LIVE. Endpoints OPEN — locked down in C3.
+- NEXT: C3 — authentication + identity (NOT yet spec-locked; pre-screen pending). Scope per
+  build-ladder §C3: API keys (hashed, revocable, never logged/exported); built-in username/
+  password accounts; login session (httpOnly cookie); four roles enforced server-side on every
+  call; offline signed license verification at startup. See build-ladder.md §C3 + architecture.md.
 
 ## Quick start
 - npm install at repo root (workspaces). engine/: npm run build / npm test.

@@ -4,7 +4,7 @@
 
 ## Current state
 
-C0, C0.1, and C1a are committed and pushed (origin/main, ialiprantis-prv/rap).
+C0, C0.1, C1 (a+b), and C2 are committed and pushed (origin/main, ialiprantis-prv/rap).
 
 C0: the rap/ monorepo is scaffolded with npm workspaces; the shared engine kernel is ported
 verbatim from v3 (risk derivation, severity = round(CVSS/2), residual severity-only,
@@ -13,11 +13,17 @@ frontend are stubbed.
 
 C0.1: this clean V4 doc set and a frozen v3 archive reference.
 
-C1 is spec-locked and split. C1a (committed) adds the engine-pure cascading RAW pass: flat
-DependencyEdge graph, per-CIA tau (TAU_DEFAULTS + EDGE_TYPES), DFS max-product propagation
-(per-traversal visited-set, cycle-safe, no length cap), winning contributing path, and
-Total_d = min(80, max(individual, cascading)) as exact floats; raw source risk from in-scope
-triplets; the §8.6 worked example passes (=24). C1b (next) adds the residual pass.
+C1 (complete): the engine-pure cascading layer. C1a adds the RAW pass — flat DependencyEdge
+graph, per-CIA tau (TAU_DEFAULTS + EDGE_TYPES), DFS max-product propagation (per-traversal
+visited-set, cycle-safe, no length cap), winning contributing path, Total_d = min(80,
+max(individual, cascading)) as exact floats; raw source risk from in-scope triplets; §8.6 = 24.
+C1b adds the residual pass — residualSourceRiskFromTriplets (via kernel residualTripletRisk)
+plus the cascadeFromTriplets one-call helper.
+
+C2 (complete): backend bootstrap. Fastify importing @rap/engine; SQLite via Drizzle +
+better-sqlite3 behind a repository layer (Postgres swaps in via DATABASE_URL); Assessment CRUD
+with org_id on every row; Zod validation; env config; esbuild single-file bundle (engine
+inlined) with tsx dev; drizzle-kit migrations applied at startup. Endpoints open; C3 locks them.
 
 ---
 
@@ -102,7 +108,7 @@ impact, deriveTriplets). Write v3 parity unit tests. Stub backend and frontend p
 Write this clean V4 doc set (7 files in docs/). Archive a reference copy of the v3
 docs for historical rationale. Pushed with C0.
 
-### C1 (split: C1a committed, C1b next)
+### C1 (complete: C1a + C1b committed)
 
 Engine-pure cascading layer in engine/. Locked decisions D1-D5:
 - D1: engine consumes a flat DependencyEdge[] (from -> to); containment/parent_ref edge
@@ -121,10 +127,10 @@ C1a (committed): types/cascading.ts + constants (TAU_DEFAULTS, EDGE_TYPES) + pro
 propagateAll + sourceRiskFromTriplets (raw) + residual reducer signature stub; full invariant
 suite + the §8.6 acceptance test (Edge Node -> Data Manager, tau_A=0.8 = 24).
 
-C1b (next): residualSourceRiskFromTriplets behaviour (source risk from residualTripletRisk) +
-residual propagation pass + tests.
+C1b (committed): residualSourceRiskFromTriplets (source risk from residualTripletRisk) +
+cascadeFromTriplets one-call helper + residual propagation tests.
 
-### C2
+### C2 (committed)
 
 Backend bootstrap and database layer. Node/TS server, SQLite default (Postgres optional
 via connection-string config). Assessment CRUD endpoints. Single-tenant schema, org_id
