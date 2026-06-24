@@ -3,13 +3,28 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "RAP backend API service (stub at C0; seeded later). Reuses @rap/engine for all methodology.",
+  "description": "RAP backend API service (C2). Reuses @rap/engine for all methodology.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -b"
+    "dev": "tsx watch src/index.ts",
+    "build": "node esbuild.mjs",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
-    "@rap/engine": "*"
+    "@rap/engine": "*",
+    "better-sqlite3": "^12.11.1",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^5.8.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.28.1",
+    "tsx": "^4.22.4"
   }
 }

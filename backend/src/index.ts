@@ -1,11 +1,38 @@
-// @rap/backend — STUB (C0). The API service is seeded at a later rung. This stub
-// exists only to wire the workspace + project reference and to prove the backend
-// reuses the shared engine (no second methodology implementation).
+// @rap/backend — service entrypoint (C2). Parses config, opens the DB (runs
+// migrations), builds the Fastify app, listens, and shuts down gracefully.
+import { loadConfig } from './config';
+import { createDb } from './db/client';
+import { buildApp } from './app';
 
-import { RISK_SCALE_MAX, computeRiskV3 } from '@rap/engine';
+function log(level: 'info' | 'error', msg: string): void {
+  console.log(JSON.stringify({ level, msg, ts: Date.now() }));
+}
 
-/** Marker so the workspace has a real, type-checked export at C0. */
-export const RAP_BACKEND_STUB = true as const;
+const config = loadConfig();
+const handle = createDb({ url: config.databaseUrl, migrationsDir: config.migrationsDir });
+const app = buildApp({ db: handle.db, defaultOrgId: config.defaultOrgId });
 
-/** Re-exported from the shared kernel — backend and browser score identically. */
-export { RISK_SCALE_MAX, computeRiskV3 };
+let shuttingDown = false;
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  log('info', `received ${signal}, shutting down`);
+  try {
+    await app.close();
+  } finally {
+    handle.close();
+    process.exit(0);
+  }
+}
+
+process.on('SIGINT', () => void shutdown('SIGINT'));
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+
+try {
+  await app.listen({ port: config.port, host: config.host });
+  log('info', `listening on http://${config.host}:${config.port}`);
+} catch (err) {
+  log('error', `failed to start: ${String(err)}`);
+  handle.close();
+  process.exit(1);
+}
