@@ -4,7 +4,7 @@
 
 ## Current state
 
-C0, C0.1, C1 (a+b), C2, C3a, and C3b are committed and pushed (origin/main, ialiprantis-prv/rap).
+C0, C0.1, C1 (a+b), C2, C3a, C3b, and C3c are committed and pushed (origin/main, ialiprantis-prv/rap).
 
 C0: the rap/ monorepo is scaffolded with npm workspaces; the shared engine kernel is ported
 verbatim from v3 (risk derivation, severity = round(CVSS/2), residual severity-only,
@@ -40,7 +40,18 @@ User admin (create/list/patch/reset-password) guarded by canAssign (granted role
 (target's current rank <= actor) so a lower-ranked admin cannot demote, disable, or reset a higher-ranked
 user — the PRV super-admin is protected. Global must_change_password gating; per-account login lockout
 with exponential backoff. Migration 0002 additive (api_keys.role, users.failed_attempts/locked_until).
-Deferred: 409 on duplicate username; last-prv_super_admin self-lockout guard.
+Hardening (committed): 409 on duplicate username + last-enabled-prv_super_admin availability guard
+(disable/demote refused with 409 when it would drop the enabled-super-admin count to zero).
+
+C3c (complete): offline signed license verification. Ed25519 detached signature over the LITERAL
+payload bytes (envelope { payload:b64url(JSON), sig:b64url }); verify-then-JSON.parse, no
+canonicalization. Production public key is a compiled-in, esbuild-inlined constant — NOT
+operator-overridable (no env switch) so the gate cannot be bypassed; the private key is held offline
+by PRV. Fail-closed startup gate (exit 1, no bind) on missing/unreadable file, bad signature,
+schema-invalid payload, or now>expiry (hard, no grace). customer is signature-bound + surfaced;
+seats surfaced only (no runtime enforcement). GET /license (org_admin+) returns the verified summary
+(no per-request re-verify). Dev uses a separate tsx entry with a dev-only key + committed sample;
+the prod bundle (only entry esbuild builds) provably excludes the dev key. No DB migration.
 
 ---
 
@@ -153,7 +164,7 @@ Backend bootstrap and database layer. Node/TS server, SQLite default (Postgres o
 via connection-string config). Assessment CRUD endpoints. Single-tenant schema, org_id
 stamped on all records.
 
-### C3 (sliced C3a/C3b/C3c)
+### C3 (complete — C3a/C3b/C3c committed)
 
 Authentication and identity, split into three independently gate-able rungs.
 
@@ -171,12 +182,29 @@ guard; four roles ranked viewer<analyst<org_admin<prv_super_admin (requiredRole 
 allowlist /health, /login, /logout. X-API-Key auth + admin-only API-key issue/list/revoke (hex keyId).
 User admin guarded by canAssign + canActOn so a lower-ranked admin cannot demote/disable/reset a
 higher-ranked user (PRV super-admin protected). Global must_change_password gating; per-account login
-lockout (exponential backoff). Flips the system open -> locked. Deferred: 409 on duplicate username;
-last-prv_super_admin guard.
+lockout (exponential backoff). Flips the system open -> locked. Hardening (committed): 409 on
+duplicate username; last-enabled-prv_super_admin availability guard (disable/demote that would
+remove the final enabled super-admin is refused with 409).
 
-C3c: offline signed license-file verification at startup (public key embedded in the image;
-customer identity, expiry, seat count; no phone-home; a deployment without a valid license does
-not start).
+C3c (committed): offline signed license verification at startup. Five locked decisions:
+- Signature: Ed25519 via Node crypto (no native dependency).
+- File format: a detached signature over the LITERAL license-JSON bytes. Envelope
+  { payload: base64url(<exact license-JSON bytes>), sig: base64url(<Ed25519 over those bytes>) }.
+  Verification decodes payload, Ed25519-verifies the signature over those exact bytes, THEN
+  JSON.parse — no canonicalization.
+- Payload (Zod): { v:1, licenseId, customer, issuedAt (ISO-8601), expiry (ISO-8601 UTC), seats:int }.
+  expiry is hard (no grace). customer is signature-bound + surfaced (not separately enforced); seats
+  is recorded/surfaced only — NO runtime enforcement.
+- Fail-closed: the process exits non-zero and never binds on missing/unreadable file, bad signature,
+  malformed/schema-invalid payload, or now > expiry. One clear log line (identity/expiry when
+  parseable, no secrets). GET /license (org_admin+) returns the startup-verified summary; it does
+  not re-verify per request.
+- Key handling: the production Ed25519 public key is a compiled-in source constant (esbuild-inlined),
+  NOT operator-overridable — there is deliberately no env switch for the verification key, so the
+  gate cannot be bypassed. The production private key is held offline by PRV. Dev/test run a SEPARATE
+  tsx entrypoint that injects a dev-only key (committed under backend/dev/) and a committed sample
+  license; esbuild bundles only the prod entry, so the dev key is provably absent from the prod
+  bundle. No DB migration (the license is file-verified and held in app state).
 
 ### C4
 

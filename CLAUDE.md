@@ -45,7 +45,7 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   Mitigations→Dashboard→Export (+ new Dependencies & Cascading screen).
 
 ## Current state
-- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = ddcffdb.
+- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = 35c524f.
 - C0 DONE (committed): scaffold monorepo + engine kernel ported verbatim from v3; parity tests
   green. Severity = round(CVSS/2) (v3 C4 live rule).
 - C0.1 DONE (committed): clean V4 docs + frozen v3 archive + this CLAUDE.md.
@@ -60,7 +60,7 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   with org_id on every row; Zod at boundaries; env config; esbuild single-file bundle (engine
   inlined) + tsx dev; drizzle-kit migrations applied at startup. Gate 4.5 step 4 (backend API
   smoke, Fastify inject) is LIVE. Endpoints OPEN — locked down in C3.
-- C3 IN PROGRESS — authentication + identity, sliced C3a/C3b/C3c (pre-screen locked).
+- C3 DONE (committed): authentication + identity, sliced C3a/C3b/C3c.
   - C3a DONE (committed): authN substrate. users/sessions/api_keys tables (org_id on every row,
     sessions FK-cascade); scrypt password hashing (PHC-style, timing-safe, no native module) +
     SHA-256 API-key hashing (rap_<keyId>_<secret>, constant-time); server-side sessions in a signed
@@ -74,12 +74,19 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
     auth (constant-time) + admin-only API-key issue/list/revoke (hex keyId); user admin guarded by
     canAssign + canActOn so a lower-ranked admin cannot demote/disable/reset a higher-ranked user
     (PRV super-admin protected); global must_change_password gating; per-account login lockout
-    (exponential backoff). Migration 0002 additive. Deferred: 409 on duplicate username;
-    last-prv_super_admin self-lockout guard.
-  - NEXT: C3c — offline signed license-file verification at startup (NOT spec-locked; pre-screen
-    pending). Public key embedded in the image; license carries customer identity, expiry, seat
-    count; no phone-home; deployment without a valid license does not start. See build-ladder.md
-    §C3 + architecture.md (License).
+    (exponential backoff). Migration 0002 additive. Hardening (committed): 409 on duplicate username
+    + last-enabled-prv_super_admin availability guard.
+  - C3c DONE (committed): offline signed license verification. Ed25519 detached signature over the
+    LITERAL payload bytes (envelope { payload:b64url(JSON), sig:b64url }); verify-then-JSON.parse,
+    no canonicalization. Prod public key is a compiled-in, esbuild-inlined constant — NOT
+    operator-overridable (no env switch, no bypass); prod private key held offline by PRV. Startup
+    gate is fail-closed (exit 1, no bind) on missing/unreadable file, bad signature, schema-invalid
+    payload, or now>expiry (hard, no grace). customer signature-bound + surfaced; seats surfaced
+    only (no runtime enforcement). GET /license (org_admin+) returns the verified summary (no
+    re-verify). Dev: separate tsx entry (src/dev/index.ts) injects a dev-only key from backend/dev/
+    + committed sample license; esbuild bundles only the prod entry so the dev key is provably
+    absent from the prod bundle. No DB migration.
+  - NEXT: C4 — see build-ladder.md (post-C3 rungs).
 
 ## Quick start
 - npm install at repo root (workspaces). engine/: npm run build / npm test.
