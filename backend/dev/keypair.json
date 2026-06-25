@@ -1,0 +1,5 @@
+{
+  "_comment": "DEV ONLY license-signing keypair. NOT a production secret. Used by the tsx dev entry + mint-license.mjs. The PROD key is compiled into src/license/publicKey.ts; its private key is held offline by PRV and is not in this repo.",
+  "publicKey": "MCowBQYDK2VwAyEAm_GkU3LPdHiiLDcdaEI8bjs_T_IvN8-p4n6wdgnFmc4",
+  "privateKey": "MC4CAQAwBQYDK2VwBCIEIEsbKWyghoKumWwNzO0WKPh-h61_-x1RXSzx9__SZLmc"
+}

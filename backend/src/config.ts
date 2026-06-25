@@ -20,6 +20,7 @@ const EnvSchema = z.object({
   LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   LOGIN_LOCK_BASE_MS: z.coerce.number().int().positive().default(60000), // 1m
   LOGIN_LOCK_MAX_MS: z.coerce.number().int().positive().default(900000), // 15m
+  RAP_LICENSE_FILE: z.string().min(1).default('/etc/rap/license.json'),
 });
 
 export interface Config {
@@ -38,6 +39,7 @@ export interface Config {
   loginMaxAttempts: number;
   loginLockBaseMs: number;
   loginLockMaxMs: number;
+  licenseFile: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -58,5 +60,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     loginMaxAttempts: parsed.LOGIN_MAX_ATTEMPTS,
     loginLockBaseMs: parsed.LOGIN_LOCK_BASE_MS,
     loginLockMaxMs: parsed.LOGIN_LOCK_MAX_MS,
+    licenseFile: parsed.RAP_LICENSE_FILE,
   };
 }

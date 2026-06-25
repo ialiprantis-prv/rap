@@ -31,9 +31,19 @@ export function makeTestApp() {
     loginMaxAttempts: 5,
     loginLockBaseMs: 60000,
     loginLockMaxMs: 900000,
+    license: TEST_LICENSE,
   });
   return { app, handle, defaultOrgId: TEST_ORG_ID };
 }
+
+/** Stub license summary injected into the test app (verify is a startup gate). */
+export const TEST_LICENSE = {
+  licenseId: 'test-license',
+  customer: 'Test Customer',
+  issuedAt: '2026-01-01T00:00:00.000Z',
+  expiry: '2099-12-31T23:59:59.000Z',
+  seats: 10,
+};
 
 export interface SeedUserInput {
   username: string;

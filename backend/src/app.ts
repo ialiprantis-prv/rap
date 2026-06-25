@@ -2,6 +2,7 @@ import cookie from '@fastify/cookie';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import type { AppDb } from './db/client';
+import type { LicenseSummary } from './license/verify';
 import { AuthError, ForbiddenError } from './auth/errors';
 import { applyAuth } from './auth/plugin';
 import { applyGuard } from './auth/guard';
@@ -10,6 +11,7 @@ import { assessmentRoutes } from './routes/assessments';
 import { authRoutes } from './routes/auth';
 import { apiKeyRoutes } from './routes/apiKeys';
 import { userRoutes } from './routes/users';
+import { licenseRoutes } from './routes/license';
 
 export interface AppDeps {
   db: AppDb;
@@ -22,6 +24,7 @@ export interface AppDeps {
   loginMaxAttempts: number;
   loginLockBaseMs: number;
   loginLockMaxMs: number;
+  license: LicenseSummary;
 }
 
 /** Builds a Fastify instance. No DB work here — db is injected. */
@@ -64,5 +67,6 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.register(authRoutes, deps);
   app.register(apiKeyRoutes, deps);
   app.register(userRoutes, deps);
+  app.register(licenseRoutes, deps);
   return app;
 }

@@ -3,16 +3,17 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "RAP backend API service (C3a). Reuses @rap/engine for all methodology.",
+  "description": "RAP backend API service (C3c). Reuses @rap/engine for all methodology.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/dev/index.ts",
     "build": "node esbuild.mjs",
     "start": "node dist/server.js",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "dev:mint-license": "tsx dev/mint-license.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
