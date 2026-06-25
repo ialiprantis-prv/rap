@@ -29,6 +29,9 @@ async function start(): Promise<void> {
     cookieSecure: config.cookieSecure,
     sessionAbsoluteTtlMs: config.sessionAbsoluteTtlMs,
     sessionIdleTtlMs: config.sessionIdleTtlMs,
+    loginMaxAttempts: config.loginMaxAttempts,
+    loginLockBaseMs: config.loginLockBaseMs,
+    loginLockMaxMs: config.loginLockMaxMs,
   });
 
   let shuttingDown = false;

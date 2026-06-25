@@ -26,6 +26,13 @@ function publicUser(u: Pick<User, 'id' | 'username' | 'role' | 'mustChangePasswo
 
 export const authRoutes: FastifyPluginAsync<AppDeps> = async (app, opts) => {
   const { db, defaultOrgId, cookieName, cookieSecure, sessionAbsoluteTtlMs } = opts;
+  const lockoutCfg = {
+    maxAttempts: opts.loginMaxAttempts,
+    lockBaseMs: opts.loginLockBaseMs,
+    lockMaxMs: opts.loginLockMaxMs,
+  };
+  const publicCfg = { config: { public: true } };
+  const selfCfg = { config: { requiredRole: 'viewer' as const } };
 
   const cookieOpts: CookieSerializeOptions = {
     httpOnly: true,
@@ -37,29 +44,33 @@ export const authRoutes: FastifyPluginAsync<AppDeps> = async (app, opts) => {
   };
 
   // Public. Generic 401 + timing-equalised so it cannot enumerate accounts.
-  app.post('/login', async (req, reply) => {
+  app.post('/login', publicCfg, async (req, reply) => {
     const { username, password } = LoginBody.parse(req.body);
+    const now = Date.now();
     const user = userRepo.findByUsername(db, defaultOrgId, username);
-    if (!user || user.disabled) {
+    // Unknown, disabled, or locked: equalise timing and refuse generically.
+    if (!user || user.disabled || userRepo.isLocked(user, now)) {
       await dummyVerify(password);
       throw new InvalidCredentialsError();
     }
     if (!(await verifyPassword(password, user.passwordHash))) {
+      userRepo.recordFailedLogin(db, user, lockoutCfg, now);
       throw new InvalidCredentialsError();
     }
+    userRepo.resetLockout(db, user.orgId, user.id);
     const token = generateToken();
     sessionRepo.create(db, {
       orgId: user.orgId,
       userId: user.id,
       tokenHash: hashToken(token),
-      expiresAt: Date.now() + sessionAbsoluteTtlMs,
+      expiresAt: now + sessionAbsoluteTtlMs,
     });
     reply.setCookie(cookieName, token, cookieOpts);
     return reply.status(200).send({ user: publicUser(user) });
   });
 
   // Public + idempotent. Clears the session if present.
-  app.post('/logout', async (req, reply) => {
+  app.post('/logout', publicCfg, async (req, reply) => {
     const raw = req.cookies[cookieName];
     if (raw) {
       const u = req.unsignCookie(raw);
@@ -70,14 +81,14 @@ export const authRoutes: FastifyPluginAsync<AppDeps> = async (app, opts) => {
   });
 
   // Session-required.
-  app.get('/me', async (req, reply) => {
+  app.get('/me', selfCfg, async (req, reply) => {
     if (!req.user) return reply.status(401).send({ error: 'Unauthorized' });
     const { id, username, role, mustChangePassword } = req.user;
     return { user: { id, username, role, mustChangePassword } };
   });
 
   // Session-required. Rotates password, clears must-change, revokes other sessions.
-  app.post('/me/password', async (req, reply) => {
+  app.post('/me/password', selfCfg, async (req, reply) => {
     if (!req.user) return reply.status(401).send({ error: 'Unauthorized' });
     const { currentPassword, newPassword } = PasswordBody.parse(req.body);
     const user = userRepo.getById(db, req.user.orgId, req.user.id);

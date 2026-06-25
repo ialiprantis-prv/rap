@@ -17,6 +17,17 @@ export class InvalidCredentialsError extends AuthError {
   }
 }
 
+/** Authenticated but under-privileged (or a denied/misconfigured route) -> 403. */
+export class ForbiddenError extends Error {
+  readonly statusCode = 403;
+  readonly code: string;
+  constructor(code = 'Forbidden', message = 'Forbidden') {
+    super(message);
+    this.name = 'ForbiddenError';
+    this.code = code;
+  }
+}
+
 /**
  * Thrown at startup when no users exist and no admin-seed env is set.
  * Fail closed: the service must refuse to start rather than run open.

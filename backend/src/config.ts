@@ -17,6 +17,9 @@ const EnvSchema = z.object({
   SESSION_IDLE_TTL_MS: z.coerce.number().int().positive().default(3600000), // 1h
   RAP_ADMIN_USERNAME: z.string().min(1).optional(),
   RAP_ADMIN_PASSWORD: z.string().min(12).optional(),
+  LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  LOGIN_LOCK_BASE_MS: z.coerce.number().int().positive().default(60000), // 1m
+  LOGIN_LOCK_MAX_MS: z.coerce.number().int().positive().default(900000), // 15m
 });
 
 export interface Config {
@@ -32,6 +35,9 @@ export interface Config {
   sessionIdleTtlMs: number;
   adminUsername?: string;
   adminPassword?: string;
+  loginMaxAttempts: number;
+  loginLockBaseMs: number;
+  loginLockMaxMs: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -49,5 +55,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     sessionIdleTtlMs: parsed.SESSION_IDLE_TTL_MS,
     adminUsername: parsed.RAP_ADMIN_USERNAME,
     adminPassword: parsed.RAP_ADMIN_PASSWORD,
+    loginMaxAttempts: parsed.LOGIN_MAX_ATTEMPTS,
+    loginLockBaseMs: parsed.LOGIN_LOCK_BASE_MS,
+    loginLockMaxMs: parsed.LOGIN_LOCK_MAX_MS,
   };
 }

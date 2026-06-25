@@ -18,8 +18,10 @@ const Params = z.object({ id: z.string().min(1) });
 
 export const assessmentRoutes: FastifyPluginAsync<AppDeps> = async (app, opts) => {
   const { db, defaultOrgId } = opts;
+  const read = { config: { requiredRole: 'viewer' as const } };
+  const write = { config: { requiredRole: 'analyst' as const } };
 
-  app.post('/assessments', async (req, reply) => {
+  app.post('/assessments', write, async (req, reply) => {
     const body = CreateBody.parse(req.body);
     const rec = repo.create(db, defaultOrgId, {
       name: body.name,
@@ -28,16 +30,16 @@ export const assessmentRoutes: FastifyPluginAsync<AppDeps> = async (app, opts) =
     return reply.status(201).send(rec);
   });
 
-  app.get('/assessments', async () => repo.list(db, defaultOrgId));
+  app.get('/assessments', read, async () => repo.list(db, defaultOrgId));
 
-  app.get('/assessments/:id', async (req, reply) => {
+  app.get('/assessments/:id', read, async (req, reply) => {
     const { id } = Params.parse(req.params);
     const rec = repo.get(db, defaultOrgId, id);
     if (!rec) return reply.status(404).send({ error: 'NotFound' });
     return rec;
   });
 
-  app.patch('/assessments/:id', async (req, reply) => {
+  app.patch('/assessments/:id', write, async (req, reply) => {
     const { id } = Params.parse(req.params);
     const patch = PatchBody.parse(req.body);
     const rec = repo.update(db, defaultOrgId, id, patch);
@@ -45,7 +47,7 @@ export const assessmentRoutes: FastifyPluginAsync<AppDeps> = async (app, opts) =
     return rec;
   });
 
-  app.delete('/assessments/:id', async (req, reply) => {
+  app.delete('/assessments/:id', write, async (req, reply) => {
     const { id } = Params.parse(req.params);
     const ok = repo.remove(db, defaultOrgId, id);
     if (!ok) return reply.status(404).send({ error: 'NotFound' });

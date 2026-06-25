@@ -1,10 +1,13 @@
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
 import { createDb, type DbHandle } from '../../src/db/client';
 import { buildApp } from '../../src/app';
-import type { Role } from '../../src/db/schema';
+import type { Role, User } from '../../src/db/schema';
 import { hashPassword } from '../../src/auth/password';
+import { formatApiKey, generateToken, hashToken } from '../../src/auth/tokens';
+import * as apiKeyRepo from '../../src/repository/apiKeys';
 import * as userRepo from '../../src/repository/users';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -25,6 +28,9 @@ export function makeTestApp() {
     cookieSecure: false,
     sessionAbsoluteTtlMs: 28800000,
     sessionIdleTtlMs: 3600000,
+    loginMaxAttempts: 5,
+    loginLockBaseMs: 60000,
+    loginLockMaxMs: 900000,
   });
   return { app, handle, defaultOrgId: TEST_ORG_ID };
 }
@@ -52,4 +58,33 @@ export async function login(app: FastifyInstance, username: string, password: st
   const c = res.cookies.find((x) => x.name === TEST_COOKIE_NAME);
   if (!c) throw new Error(`login failed (${res.statusCode}): ${res.payload}`);
   return `${c.name}=${c.value}`;
+}
+
+/** Seeds a user of the given role and logs in; returns the user + session cookie. */
+export async function authedAgent(
+  app: FastifyInstance,
+  handle: DbHandle,
+  input: SeedUserInput,
+): Promise<{ user: User; cookie: string }> {
+  const user = await seedUser(handle, input);
+  const cookie = await login(app, input.username, input.password);
+  return { user, cookie };
+}
+
+/** Inserts an API key directly and returns its keyId + the one-time raw key. */
+export function seedApiKey(
+  handle: DbHandle,
+  input: { label: string; role: Role; createdBy?: string },
+): { keyId: string; key: string } {
+  const keyId = randomBytes(8).toString('hex'); // underscore-free, matches issuer
+  const secret = generateToken();
+  apiKeyRepo.create(handle.db, {
+    keyId,
+    orgId: TEST_ORG_ID,
+    label: input.label,
+    role: input.role,
+    tokenHash: hashToken(secret),
+    createdBy: input.createdBy ?? 'test',
+  });
+  return { keyId, key: formatApiKey(keyId, secret) };
 }
