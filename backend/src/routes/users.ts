@@ -40,6 +40,9 @@ export const userRoutes: FastifyPluginAsync<AppDeps> = async (app, opts) => {
     const actor = req.user!;
     const { username, password, role } = CreateBody.parse(req.body);
     if (!canAssign(actor.role, role)) throw new ForbiddenError('Forbidden');
+    if (userRepo.findByUsername(db, defaultOrgId, username)) {
+      return reply.status(409).send({ error: 'UsernameTaken' });
+    }
     const user = userRepo.create(db, defaultOrgId, {
       username,
       passwordHash: await hashPassword(password),
@@ -58,6 +61,14 @@ export const userRoutes: FastifyPluginAsync<AppDeps> = async (app, opts) => {
     const target = userRepo.getById(db, defaultOrgId, id);
     if (!target) return reply.status(404).send({ error: 'NotFound' });
     if (!canActOn(actor.role, target.role)) throw new ForbiddenError('Forbidden');
+    // Availability invariant: at least one ENABLED prv_super_admin must remain.
+    if (target.role === 'prv_super_admin' && target.disabled === 0) {
+      const demoting = patch.role !== undefined && patch.role !== 'prv_super_admin';
+      const disabling = patch.disabled === true;
+      if ((demoting || disabling) && userRepo.countEnabledSuperAdmins(db, defaultOrgId) === 1) {
+        return reply.status(409).send({ error: 'LastSuperAdmin' });
+      }
+    }
     if (patch.role !== undefined) {
       if (!canAssign(actor.role, patch.role)) throw new ForbiddenError('Forbidden');
       userRepo.setRole(db, defaultOrgId, id, patch.role);

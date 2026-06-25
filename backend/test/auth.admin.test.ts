@@ -147,3 +147,68 @@ test('hierarchy: org_admin acting on an analyst (lower rank) -> 200', async () =
   expect(res.statusCode).toBe(200);
   expect(res.json().disabled).toBe(true);
 });
+
+test('hardening: duplicate username -> 409 UsernameTaken', async () => {
+  const first = await app.inject({
+    method: 'POST',
+    url: '/users',
+    headers: { cookie: adminCookie },
+    payload: { username: 'dup', password: 'temp-pass-1234', role: 'analyst' },
+  });
+  expect(first.statusCode).toBe(201);
+
+  const second = await app.inject({
+    method: 'POST',
+    url: '/users',
+    headers: { cookie: adminCookie },
+    payload: { username: 'dup', password: 'other-pass-1234', role: 'viewer' },
+  });
+  expect(second.statusCode).toBe(409);
+  expect(second.json().error).toBe('UsernameTaken');
+});
+
+test('hardening: the sole enabled prv_super_admin cannot be disabled/demoted -> 409 LastSuperAdmin', async () => {
+  // The only enabled super-admin acts on itself.
+  const root = await authedAgent(app, handle, { username: 'root', password: 'root-pass-1234', role: 'prv_super_admin' });
+
+  const disable = await app.inject({
+    method: 'PATCH',
+    url: `/users/${root.user.id}`,
+    headers: { cookie: root.cookie },
+    payload: { disabled: true },
+  });
+  expect(disable.statusCode).toBe(409);
+  expect(disable.json().error).toBe('LastSuperAdmin');
+
+  const demote = await app.inject({
+    method: 'PATCH',
+    url: `/users/${root.user.id}`,
+    headers: { cookie: root.cookie },
+    payload: { role: 'org_admin' },
+  });
+  expect(demote.statusCode).toBe(409);
+  expect(demote.json().error).toBe('LastSuperAdmin');
+});
+
+test('hardening: with two enabled super-admins, disable/demote one -> 200', async () => {
+  const root = await authedAgent(app, handle, { username: 'root', password: 'root-pass-1234', role: 'prv_super_admin' });
+  const second = await seedUser(handle, { username: 'root2', password: 'root2-pass-123', role: 'prv_super_admin' });
+
+  const demote = await app.inject({
+    method: 'PATCH',
+    url: `/users/${second.id}`,
+    headers: { cookie: root.cookie },
+    payload: { role: 'org_admin' },
+  });
+  expect(demote.statusCode).toBe(200);
+  expect(demote.json().role).toBe('org_admin');
+
+  // Now only `root` remains enabled-super; disabling root must fail again.
+  const disableRoot = await app.inject({
+    method: 'PATCH',
+    url: `/users/${root.user.id}`,
+    headers: { cookie: root.cookie },
+    payload: { disabled: true },
+  });
+  expect(disableRoot.statusCode).toBe(409);
+});

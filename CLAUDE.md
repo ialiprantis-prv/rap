@@ -68,8 +68,9 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
     live per request; POST /login (generic 401, no enumeration), POST /logout, GET /me,
     POST /me/password; fail-closed first-boot PRV super-admin seed. Endpoints OPEN — gated in C3b.
   - C3b DONE (committed): authorization. Declarative per-route policy + one global guard,
-    DENY-BY-DEFAULT (untagged route refused); four roles ranked viewer<analyst<org_admin
-    prv_super_admin enforced on every route (public allowlist: /health, /login, /logout); X-API-Key
+    DENY-BY-DEFAULT (untagged route refused); four roles ranked
+    viewer<analyst<org_admin<prv_super_admin enforced on every route (public allowlist: /health,
+    /login, /logout); X-API-Key
     auth (constant-time) + admin-only API-key issue/list/revoke (hex keyId); user admin guarded by
     canAssign + canActOn so a lower-ranked admin cannot demote/disable/reset a higher-ranked user
     (PRV super-admin protected); global must_change_password gating; per-account login lockout

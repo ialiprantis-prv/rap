@@ -119,3 +119,13 @@ export function count(db: AppDb): number {
   const row = db.select({ n: sql<number>`count(*)` }).from(users).get();
   return row?.n ?? 0;
 }
+
+/** Count of ENABLED prv_super_admins in an org — guards the last-super-admin invariant. */
+export function countEnabledSuperAdmins(db: AppDb, orgId: string): number {
+  const row = db
+    .select({ n: sql<number>`count(*)` })
+    .from(users)
+    .where(and(eq(users.orgId, orgId), eq(users.role, 'prv_super_admin'), eq(users.disabled, 0)))
+    .get();
+  return row?.n ?? 0;
+}
