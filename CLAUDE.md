@@ -45,7 +45,7 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   Mitigations→Dashboard→Export (+ new Dependencies & Cascading screen).
 
 ## Current state
-- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = 2aaf464.
+- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = ddcffdb.
 - C0 DONE (committed): scaffold monorepo + engine kernel ported verbatim from v3; parity tests
   green. Severity = round(CVSS/2) (v3 C4 live rule).
 - C0.1 DONE (committed): clean V4 docs + frozen v3 archive + this CLAUDE.md.
@@ -67,10 +67,18 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
     httpOnly cookie (SameSite=Lax, Secure-in-prod, absolute 8h + idle 1h), role/disable resolved
     live per request; POST /login (generic 401, no enumeration), POST /logout, GET /me,
     POST /me/password; fail-closed first-boot PRV super-admin seed. Endpoints OPEN — gated in C3b.
-  - NEXT: C3b — authorization. Four roles enforced server-side on every route (public allowlist for
-    /health + /login); API-key issue/verify endpoints (keyId underscore-free); global
-    must_change_password gating; login rate-limit/lockout. Then C3c: offline signed-license
-    verification at startup. See build-ladder.md §C3 + architecture.md.
+  - C3b DONE (committed): authorization. Declarative per-route policy + one global guard,
+    DENY-BY-DEFAULT (untagged route refused); four roles ranked viewer<analyst<org_admin
+    prv_super_admin enforced on every route (public allowlist: /health, /login, /logout); X-API-Key
+    auth (constant-time) + admin-only API-key issue/list/revoke (hex keyId); user admin guarded by
+    canAssign + canActOn so a lower-ranked admin cannot demote/disable/reset a higher-ranked user
+    (PRV super-admin protected); global must_change_password gating; per-account login lockout
+    (exponential backoff). Migration 0002 additive. Deferred: 409 on duplicate username;
+    last-prv_super_admin self-lockout guard.
+  - NEXT: C3c — offline signed license-file verification at startup (NOT spec-locked; pre-screen
+    pending). Public key embedded in the image; license carries customer identity, expiry, seat
+    count; no phone-home; deployment without a valid license does not start. See build-ladder.md
+    §C3 + architecture.md (License).
 
 ## Quick start
 - npm install at repo root (workspaces). engine/: npm run build / npm test.

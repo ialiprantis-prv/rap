@@ -4,7 +4,7 @@
 
 ## Current state
 
-C0, C0.1, C1 (a+b), C2, and C3a are committed and pushed (origin/main, ialiprantis-prv/rap).
+C0, C0.1, C1 (a+b), C2, C3a, and C3b are committed and pushed (origin/main, ialiprantis-prv/rap).
 
 C0: the rap/ monorepo is scaffolded with npm workspaces; the shared engine kernel is ported
 verbatim from v3 (risk derivation, severity = round(CVSS/2), residual severity-only,
@@ -31,6 +31,16 @@ API-key hashing (rap_<keyId>_<secret>, constant-time compare); server-side sessi
 httpOnly cookie (SameSite=Lax, Secure-in-prod, absolute 8h + idle 1h), role/disable resolved live
 per request; POST /login (generic 401, no enumeration) / POST /logout / GET /me / POST /me/password;
 fail-closed first-boot PRV super-admin seed. Endpoints remain open — C3b adds enforcement.
+
+C3b (complete): authorization. Declarative per-route policy (config.public / config.requiredRole)
+enforced by one global preHandler guard, DENY-BY-DEFAULT (an untagged route is refused). Four roles
+ranked viewer<analyst<org_admin<prv_super_admin; requiredRole is a minimum. X-API-Key auth path
+(constant-time) resolving to a role-scoped principal; admin-only API-key issue/list/revoke (hex keyId).
+User admin (create/list/patch/reset-password) guarded by canAssign (granted role <= actor) and canActOn
+(target's current rank <= actor) so a lower-ranked admin cannot demote, disable, or reset a higher-ranked
+user — the PRV super-admin is protected. Global must_change_password gating; per-account login lockout
+with exponential backoff. Migration 0002 additive (api_keys.role, users.failed_attempts/locked_until).
+Deferred: 409 on duplicate username; last-prv_super_admin self-lockout guard.
 
 ---
 
@@ -156,10 +166,13 @@ cookie (SameSite=Lax, Secure-in-prod, absolute 8h + idle 1h), role/disable resol
 request. Fail-closed first-boot PRV super-admin seed (env-provided, must_change_password).
 Endpoints remain open.
 
-C3b: authorization. Four roles enforced server-side on every route (public allowlist for /health
-and /login); API-key issue/verify endpoints (keyId generated underscore-free so the base64url
-secret parses unambiguously); global must_change_password gating; login rate-limit/lockout.
-This rung flips the system open -> locked.
+C3b (committed): authorization. Declarative per-route policy enforced by a global deny-by-default
+guard; four roles ranked viewer<analyst<org_admin<prv_super_admin (requiredRole = minimum); public
+allowlist /health, /login, /logout. X-API-Key auth + admin-only API-key issue/list/revoke (hex keyId).
+User admin guarded by canAssign + canActOn so a lower-ranked admin cannot demote/disable/reset a
+higher-ranked user (PRV super-admin protected). Global must_change_password gating; per-account login
+lockout (exponential backoff). Flips the system open -> locked. Deferred: 409 on duplicate username;
+last-prv_super_admin guard.
 
 C3c: offline signed license-file verification at startup (public key embedded in the image;
 customer identity, expiry, seat count; no phone-home; a deployment without a valid license does
