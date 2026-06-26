@@ -1,4 +1,12 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+  foreignKey,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 
 /** The four roles, highest-to-lowest by convention. Single source for schema + zod. */
 export const ROLE_VALUES = ['prv_super_admin', 'org_admin', 'analyst', 'viewer'] as const;
@@ -89,3 +97,72 @@ export const apiKeys = sqliteTable('api_keys', {
 
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
+
+/**
+ * Vulnerability cache (C4a). GLOBAL + org-scoped, keyed by identifier and CVE
+ * (NOT per-assessment). Three tables: a per-(identifier,source) match header,
+ * its CVE edges, and a per-(CVE,source) enrichment payload. fetched_at/
+ * expires_at are null until a source first succeeds (cold). Timestamps epoch-ms.
+ */
+export const vulnSourceMatch = sqliteTable(
+  'vuln_source_match',
+  {
+    orgId: text('org_id').notNull(),
+    source: text('source').notNull(),
+    identityKind: text('identity_kind').notNull(),
+    identityValue: text('identity_value').notNull(),
+    fetchedAt: integer('fetched_at'),
+    expiresAt: integer('expires_at'),
+    lastAttemptAt: integer('last_attempt_at').notNull(),
+    lastStatus: text('last_status', { enum: ['ok', 'error'] }).notNull(),
+    lastError: text('last_error'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orgId, t.source, t.identityKind, t.identityValue] }),
+    index('idx_vuln_source_match_org').on(t.orgId),
+  ],
+);
+
+export const vulnMatchEdge = sqliteTable(
+  'vuln_match_edge',
+  {
+    orgId: text('org_id').notNull(),
+    source: text('source').notNull(),
+    identityKind: text('identity_kind').notNull(),
+    identityValue: text('identity_value').notNull(),
+    cveId: text('cve_id').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orgId, t.source, t.identityKind, t.identityValue, t.cveId] }),
+    foreignKey({
+      columns: [t.orgId, t.source, t.identityKind, t.identityValue],
+      foreignColumns: [
+        vulnSourceMatch.orgId,
+        vulnSourceMatch.source,
+        vulnSourceMatch.identityKind,
+        vulnSourceMatch.identityValue,
+      ],
+    }).onDelete('cascade'),
+    index('idx_vuln_match_edge_cve').on(t.orgId, t.cveId),
+  ],
+);
+
+export const vulnSourceCve = sqliteTable(
+  'vuln_source_cve',
+  {
+    orgId: text('org_id').notNull(),
+    source: text('source').notNull(),
+    cveId: text('cve_id').notNull(),
+    payload: text('payload', { mode: 'json' }).$type<{ cvss?: number }>(),
+    fetchedAt: integer('fetched_at'),
+    expiresAt: integer('expires_at'),
+    lastAttemptAt: integer('last_attempt_at').notNull(),
+    lastStatus: text('last_status', { enum: ['ok', 'error'] }).notNull(),
+    lastError: text('last_error'),
+  },
+  (t) => [primaryKey({ columns: [t.orgId, t.source, t.cveId] })],
+);
+
+export type VulnSourceMatch = typeof vulnSourceMatch.$inferSelect;
+export type VulnMatchEdge = typeof vulnMatchEdge.$inferSelect;
+export type VulnSourceCve = typeof vulnSourceCve.$inferSelect;

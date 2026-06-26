@@ -21,6 +21,16 @@ const EnvSchema = z.object({
   LOGIN_LOCK_BASE_MS: z.coerce.number().int().positive().default(60000), // 1m
   LOGIN_LOCK_MAX_MS: z.coerce.number().int().positive().default(900000), // 15m
   RAP_LICENSE_FILE: z.string().min(1).default('/etc/rap/license.json'),
+  // Vulnerability sources (C4a). NVD_API_KEY is a server-side secret (never logged).
+  NVD_API_KEY: z.string().min(1).optional(),
+  NVD_BASE_URL: z.string().min(1).default('https://services.nvd.nist.gov/rest/json/cves/2.0'),
+  RAP_SOURCES_OFFLINE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  RAP_SOURCE_NVD_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  NVD_RATE_MAX: z.coerce.number().int().positive().default(5), // 50 with an API key
+  NVD_RATE_WINDOW_MS: z.coerce.number().int().positive().default(30000),
+  SOURCE_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+  SOURCE_HTTP_RETRIES: z.coerce.number().int().nonnegative().default(3),
+  VULN_CACHE_TTL_NVD_MS: z.coerce.number().int().positive().default(86400000), // 24h
 });
 
 export interface Config {
@@ -40,6 +50,15 @@ export interface Config {
   loginLockBaseMs: number;
   loginLockMaxMs: number;
   licenseFile: string;
+  nvdApiKey?: string;
+  nvdBaseUrl: string;
+  sourcesOffline: boolean;
+  sourceNvdEnabled: boolean;
+  nvdRateMax: number;
+  nvdRateWindowMs: number;
+  sourceHttpTimeoutMs: number;
+  sourceHttpRetries: number;
+  vulnCacheTtlNvdMs: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -61,5 +80,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     loginLockBaseMs: parsed.LOGIN_LOCK_BASE_MS,
     loginLockMaxMs: parsed.LOGIN_LOCK_MAX_MS,
     licenseFile: parsed.RAP_LICENSE_FILE,
+    nvdApiKey: parsed.NVD_API_KEY,
+    nvdBaseUrl: parsed.NVD_BASE_URL,
+    sourcesOffline: parsed.RAP_SOURCES_OFFLINE,
+    sourceNvdEnabled: parsed.RAP_SOURCE_NVD_ENABLED,
+    nvdRateMax: parsed.NVD_RATE_MAX,
+    nvdRateWindowMs: parsed.NVD_RATE_WINDOW_MS,
+    sourceHttpTimeoutMs: parsed.SOURCE_HTTP_TIMEOUT_MS,
+    sourceHttpRetries: parsed.SOURCE_HTTP_RETRIES,
+    vulnCacheTtlNvdMs: parsed.VULN_CACHE_TTL_NVD_MS,
   };
 }

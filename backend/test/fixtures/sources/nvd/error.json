@@ -1,0 +1,3 @@
+{
+  "message": "NVD service error — this body lacks the vulnerabilities array and must fail schema parsing"
+}
