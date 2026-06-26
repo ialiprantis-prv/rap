@@ -4,7 +4,7 @@
 
 ## Current state
 
-C0, C0.1, C1 (a+b), C2, C3a, C3b, and C3c are committed and pushed (origin/main, ialiprantis-prv/rap).
+C0, C0.1, C1 (a+b), C2, C3a, C3b, C3c, and C4a are committed and pushed (origin/main, ialiprantis-prv/rap).
 
 C0: the rap/ monorepo is scaffolded with npm workspaces; the shared engine kernel is ported
 verbatim from v3 (risk derivation, severity = round(CVSS/2), residual severity-only,
@@ -53,13 +53,26 @@ seats surfaced only (no runtime enforcement). GET /license (org_admin+) returns 
 (no per-request re-verify). Dev uses a separate tsx entry with a dev-only key + committed sample;
 the prod bundle (only entry esbuild builds) provably excludes the dev key. No DB migration.
 
+C4a (complete): server-side source clients, slice 1 of 4. backend/src/sources/ holds the
+VulnMatchSource (NVD=CPE) / VulnEnrichSource (CVE-keyed) interfaces with the engine staying pure; a
+shared base client (injected fetchFn + clock, AbortController timeout, rolling-window rate limiter,
+bounded jittered backoff honoring Retry-After, discriminated {ok|reason} results that never throw);
+and the NVD CVE API 2.0 match adapter (virtualMatchString + apiKey header, paginated) yielding cveIds
+plus captured CVSS (cached for C6, not consumed). The cache is global, org-scoped, identifier/CVE-keyed
+(NOT per-assessment): vuln_source_match + vuln_match_edge (cascade FK) + vuln_source_cve, per-source
+TTL, migration 0003 additive. Pure cacheState serves ok / stale (unreachable beats expired on a failed
+attempt) / unavailable (cold+down) / disabled. Identity-driven warmAndResolve (NVD only) reads
+cache-only and fetches just the expired/missing (all on force), per source independently. No public
+endpoint yet, no new dependency (global fetch); tests use an injected fetchFn + fixtures + clock.
+
 ---
 
 ## V1 scope
 
 V1 (D3.1 deliverable) includes:
 - Asset import (CycloneDX 1.6 BOM, CPE-or-purl) and manual asset creation.
-- Automatic vulnerability matching against NVD, EUVD, OSV, EPSS, KEV.
+- Automatic vulnerability matching: NVD (CPE) and OSV (purl) are primary matchers; EPSS, KEV,
+  and EUVD are CVE-keyed enrichment/cross-reference.
 - Threat catalog management (MAGERIT v3, ENISA, MITRE ATT&CK for ICS active; NIST 800-30
   and BSI loaded when data files are supplied).
 - Individual risk scoring per C/I/A (triplet model), residual risk.
@@ -206,12 +219,36 @@ C3c (committed): offline signed license verification at startup. Five locked dec
   license; esbuild bundles only the prod entry, so the dev key is provably absent from the prod
   bundle. No DB migration (the license is file-verified and held in app state).
 
-### C4
+### C4 (in progress — C4a committed)
 
-Server-side source clients. NVD CVE API 2.0 (keyless default; NVD_API_KEY env secret).
-EUVD. OSV.dev. EPSS. CISA KEV/CSAF. DB vulnerability cache with TTL and last-fetched
-timestamp. Offline degradation: serve last cached result marked stale-as-of when a
-source is unreachable. Vulnerability refresh endpoint (`POST /assessments/{id}/vulns:refresh`).
+Server-side source clients, sliced C4a-C4d. Locked pre-screen decisions D1-D7:
+- D1: four slices; offline degradation baked into the cache from C4a, not a tail feature.
+- D2: two interfaces in backend/src/sources/, engine stays pure — VulnMatchSource (NVD=CPE,
+  OSV=purl) and VulnEnrichSource (CVE-keyed: EPSS, KEV, EUVD). EUVD is a CVE-keyed cross-reference,
+  NOT a primary matcher (its API has no CPE/purl parameter; vendor/product discovery is V2).
+- D3: global, org-scoped, identifier/CVE-keyed cache (NOT per-assessment). Three tables:
+  vuln_source_match + vuln_match_edge ((identity)<->(cve), cascade FK) + vuln_source_cve. Per-source
+  TTL via expires_at = fetched_at + ttl. Behind the repo layer (SQLite default, Postgres-swappable).
+- D4: reads are cache-only (only refresh touches the network); serve stale, never withhold; per-source
+  states ok / stale (reason expired|unreachable; unreachable wins on a failed attempt) / unavailable
+  (cold + source down) / disabled; per-source independence.
+- D5: only NVD_API_KEY is a secret (server-side). Per-source enable flags + master RAP_SOURCES_OFFLINE.
+  Per-source rate limiter + bounded backoff honoring Retry-After.
+- D6: refresh is an async job — POST /assessments/{id}/vulns:refresh -> 202 + jobId;
+  GET /assessments/{id}/vulns:refresh/{jobId} polls; vuln_refresh_job table + in-process worker; one
+  in-flight job per assessment. The job always completes with a per-source report (total outage = done
+  with all-unavailable, not error).
+- D7: no live network in tests — injected fetchFn + committed fixtures + injected clock.
+
+C4a (committed): source interfaces + shared base client + NVD match adapter + the three cache tables
+(migration 0003, additive) + cache repo + identity-driven warmAndResolve wired to NVD only. No public
+endpoint yet (the async endpoint is built once in C4d). NVD CVSS is captured into the cache but not
+consumed (severity = round(CVSS/2) is C6).
+
+C4b: OSV adapter (purl/ecosystem, querybatch); resolve fans out NVD + OSV.
+C4c: EPSS + KEV + EUVD enrichment adapters -> vuln_source_cve; enrichment join into the resolved view.
+C4d: vuln_refresh_job (migration 0004) + worker + async POST/GET endpoints (route policy,
+deny-by-default) + full fan-out + offline/partial-failure hardening + tests.
 
 ### C5
 

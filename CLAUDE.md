@@ -45,7 +45,7 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   Mitigations→Dashboard→Export (+ new Dependencies & Cascading screen).
 
 ## Current state
-- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = 35c524f.
+- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = 45e0eee.
 - C0 DONE (committed): scaffold monorepo + engine kernel ported verbatim from v3; parity tests
   green. Severity = round(CVSS/2) (v3 C4 live rule).
 - C0.1 DONE (committed): clean V4 docs + frozen v3 archive + this CLAUDE.md.
@@ -86,7 +86,22 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
     re-verify). Dev: separate tsx entry (src/dev/index.ts) injects a dev-only key from backend/dev/
     + committed sample license; esbuild bundles only the prod entry so the dev key is provably
     absent from the prod bundle. No DB migration.
-  - NEXT: C4 — see build-ladder.md (post-C3 rungs).
+- C4 IN PROGRESS — server-side source clients, sliced C4a/C4b/C4c/C4d (build-ladder §C4).
+  - C4a DONE (committed): source interfaces + vuln cache + NVD match client + resolve service.
+    backend/src/sources/: VulnMatchSource (NVD=CPE) / VulnEnrichSource (CVE-keyed: EPSS/KEV/EUVD,
+    later slices) split; shared base client (injected fetchFn + now clock; AbortController timeout;
+    bounded jittered backoff honoring Retry-After; per-source rolling-window limiter; discriminated
+    {ok|reason} results, never throws). NVD CVE API 2.0 adapter (virtualMatchString/cpeName + apiKey
+    header, paginated) -> cveIds + captured CVSS (NOT consumed; severity is C6). Cache is global,
+    org-scoped, identifier/CVE-keyed (NOT per-assessment): three tables vuln_source_match /
+    vuln_match_edge (cascade FK) / vuln_source_cve; per-source TTL (expires_at = fetched_at + ttl);
+    migration 0003 additive. Pure cacheState -> ok / stale (unreachable beats expired on a failed
+    attempt) / unavailable (cold+down) / disabled. Identity-driven warmAndResolve (NVD only): reads
+    cache-only, fetches only expired/missing (all on force), per-source independent, per-source status.
+    Config: NVD_API_KEY (server-side only) + RAP_SOURCE_NVD_ENABLED + master RAP_SOURCES_OFFLINE +
+    NVD rate/TTL knobs. No new dependency (global fetch); injected-fetch fixtured tests. EUVD
+    reclassified as CVE-keyed enrichment, not a primary matcher (R2). [45e0eee]
+  - NEXT: C4b — OSV purl-match (build-ladder §C4).
 
 ## Quick start
 - npm install at repo root (workspaces). engine/: npm run build / npm test.
