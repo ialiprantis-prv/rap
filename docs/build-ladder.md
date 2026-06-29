@@ -4,7 +4,7 @@
 
 ## Current state
 
-C0, C0.1, C1 (a+b), C2, C3a, C3b, C3c, and C4a are committed and pushed (origin/main, ialiprantis-prv/rap).
+C0, C0.1, C1 (a+b), C2, C3a, C3b, C3c, C4a, and C4b are committed and pushed (origin/main, ialiprantis-prv/rap).
 
 C0: the rap/ monorepo is scaffolded with npm workspaces; the shared engine kernel is ported
 verbatim from v3 (risk derivation, severity = round(CVSS/2), residual severity-only,
@@ -106,6 +106,8 @@ Strict CVSS 4.0 scoring (V1 keeps the round(CVSS/2) approximation plus manual ov
     CVSS 4.0 native scoring is a V2 item).
 Anything owned by other tools: detection/monitoring/incident response (TDIR), SBOM
     generation (xBOMGuard), CTI production (PolemAIrchOS).
+OSV advisories without a CVE alias (GHSA/PYSEC-only): not ingested in V1 (cache and kernel are
+    CVE-keyed). Candidate for V2 non-CVE advisory support.
 Full pilot production data.
 
 ---
@@ -245,7 +247,10 @@ C4a (committed): source interfaces + shared base client + NVD match adapter + th
 endpoint yet (the async endpoint is built once in C4d). NVD CVSS is captured into the cache but not
 consumed (severity = round(CVSS/2) is C6).
 
-C4b: OSV adapter (purl/ecosystem, querybatch); resolve fans out NVD + OSV.
+C4b (committed): OSV adapter (identityKind purl) querying /v1/query once per identity (NOT
+querybatch); CVE taken from record.aliases (one edge per CVE; non-CVE OSV records dropped);
+version-bearing cache key (canonicalIdentityValue); resolve fans out NVD + OSV, union deduped
+by CVE.
 C4c: EPSS + KEV + EUVD enrichment adapters -> vuln_source_cve; enrichment join into the resolved view.
 C4d: vuln_refresh_job (migration 0004) + worker + async POST/GET endpoints (route policy,
 deny-by-default) + full fan-out + offline/partial-failure hardening + tests.

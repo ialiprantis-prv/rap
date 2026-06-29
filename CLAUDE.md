@@ -45,7 +45,7 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   Mitigations→Dashboard→Export (+ new Dependencies & Cascading screen).
 
 ## Current state
-- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = 45e0eee.
+- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = d5ad8ea.
 - C0 DONE (committed): scaffold monorepo + engine kernel ported verbatim from v3; parity tests
   green. Severity = round(CVSS/2) (v3 C4 live rule).
 - C0.1 DONE (committed): clean V4 docs + frozen v3 archive + this CLAUDE.md.
@@ -101,7 +101,19 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
     Config: NVD_API_KEY (server-side only) + RAP_SOURCE_NVD_ENABLED + master RAP_SOURCES_OFFLINE +
     NVD rate/TTL knobs. No new dependency (global fetch); injected-fetch fixtured tests. EUVD
     reclassified as CVE-keyed enrichment, not a primary matcher (R2). [45e0eee]
-  - NEXT: C4b — OSV purl-match (build-ladder §C4).
+  - C4b DONE (committed): OSV purl-match client + resolve fan-out. backend/src/sources/osv.ts:
+    VulnMatchSource (identityKind 'purl') querying OSV /v1/query once per identity (full records,
+    NOT querybatch); request rule version-XOR-versioned-purl. OSV ids are GHSA/PYSEC/OSV with the
+    CVE in aliases -> one vuln_match_edge per CVE alias; records with no CVE alias dropped silently
+    (documented V1 gap). OSV severity captured as a CVSS vector string into vuln_source_cve
+    (source='osv') payload (NOT consumed; C6). New sources/normalize.ts: canonicalIdentityValue
+    yields a version-bearing cache key (CPE as-is; purl -> pkg:...@version, attaching version when
+    unversioned, else skip) so two versions can't collide on one row; N-2 normalizer
+    (source/identity_kind lowercased + validated) applied at every cache read/write. resolve fans
+    out per identity x enabled match source, union deduped by cve_id with per-source provenance,
+    per-source independent. No DB migration (reuses the three C4a tables; payload $type widened to
+    {cvss?,cvssVector?}). No new dependency. [d5ad8ea]
+  - NEXT: C4c — EPSS + KEV + EUVD enrichment (build-ladder §C4).
 
 ## Quick start
 - npm install at repo root (workspaces). engine/: npm run build / npm test.
