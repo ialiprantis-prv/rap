@@ -4,6 +4,7 @@
 // assessment -> identities binding is C5; this is list-driven.
 import type { AppDb } from '../db/client';
 import * as cache from '../repository/vulnCache';
+import { canonicalIdentityValue } from './normalize';
 import type { MatchSlot } from './registry';
 import type { AssetIdentity, ServedState, SourceDeps, SourceId } from './types';
 
@@ -43,7 +44,12 @@ export async function warmAndResolve(
   const sources: Partial<Record<SourceId, SourceOutcome>> = {};
 
   for (const slot of deps.slots) {
-    const applicable = identities.filter((i) => i[slot.identityKind]);
+    // Select the version-bearing identity value for this source's kind; an
+    // identity that cannot supply one (e.g. unversioned purl, no version) is
+    // skipped — no call, no cache row.
+    const applicable = identities
+      .map((identity) => ({ identity, value: canonicalIdentityValue(slot.identityKind, identity) }))
+      .filter((x): x is { identity: AssetIdentity; value: string } => x.value !== null);
     if (!slot.enabled) {
       sources[slot.id] = { state: 'disabled', counts: { identities: applicable.length, fetched: 0, failed: 0 } };
       continue;
@@ -53,8 +59,8 @@ export async function warmAndResolve(
     let worst: cache.CacheStateResult = { state: 'ok' };
     let newestFetchedAt: number | undefined;
 
-    for (const identity of applicable) {
-      const key = { orgId, source: slot.id, identityKind: slot.identityKind, identityValue: identity[slot.identityKind]! };
+    for (const { identity, value } of applicable) {
+      const key = { orgId, source: slot.id, identityKind: slot.identityKind, identityValue: value };
       const header = cache.getMatchHeader(db, key);
       if (opts.force || isStale(header, deps.now())) {
         counts.fetched++;
@@ -63,8 +69,7 @@ export async function warmAndResolve(
           const at = deps.now();
           cache.upsertMatchSuccess(db, key, { cveIds: res.cveIds, fetchedAt: at, expiresAt: at + slot.ttlMs });
           for (const id of res.cveIds) {
-            const cvss = res.cveData?.get(id)?.cvss;
-            cache.upsertCveEnrich(db, { orgId, source: slot.id, cveId: id }, { payload: cvss !== undefined ? { cvss } : {}, fetchedAt: at, expiresAt: at + slot.ttlMs });
+            cache.upsertCveEnrich(db, { orgId, source: slot.id, cveId: id }, { payload: res.cveData?.get(id) ?? {}, fetchedAt: at, expiresAt: at + slot.ttlMs });
           }
         } else {
           counts.failed++;

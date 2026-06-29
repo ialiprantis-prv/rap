@@ -75,12 +75,12 @@ test('cve enrich: upsert then failure keeps payload', () => {
   expect(after?.payload).toEqual({ cvss: 7.5 });
 });
 
-test('resolveMatches unions edges across identities', () => {
+test('resolveMatches unions edges across identities (version-bearing keys)', () => {
   cache.upsertMatchSuccess(handle.db, key('cpe:a'), { cveIds: ['A', 'B'], fetchedAt: 1, expiresAt: 2 });
   cache.upsertMatchSuccess(
     handle.db,
-    { orgId: TEST_ORG_ID, source: 'nvd', identityKind: 'purl', identityValue: 'pkg:x' },
+    { orgId: TEST_ORG_ID, source: 'osv', identityKind: 'purl', identityValue: 'pkg:npm/x@1.0.0' },
     { cveIds: ['B', 'C'], fetchedAt: 1, expiresAt: 2 },
   );
-  expect(cache.resolveMatches(handle.db, TEST_ORG_ID, [{ cpe: 'cpe:a' }, { purl: 'pkg:x' }]).sort()).toEqual(['A', 'B', 'C']);
+  expect(cache.resolveMatches(handle.db, TEST_ORG_ID, [{ cpe: 'cpe:a' }, { purl: 'pkg:npm/x@1.0.0' }]).sort()).toEqual(['A', 'B', 'C']);
 });

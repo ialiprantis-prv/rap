@@ -1,0 +1,18 @@
+{
+  "vulns": [
+    {
+      "id": "GHSA-aaaa-bbbb-cccc",
+      "aliases": ["CVE-2023-1111"],
+      "severity": [{ "type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H" }]
+    },
+    {
+      "id": "GHSA-dddd-eeee-ffff",
+      "aliases": ["GHSA-dddd-eeee-ffff", "MAL-0001"]
+    },
+    {
+      "id": "PYSEC-2024-99",
+      "aliases": ["CVE-2024-2222", "CVE-2024-3333"],
+      "severity": [{ "type": "CVSS_V3", "score": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N" }]
+    }
+  ]
+}

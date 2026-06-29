@@ -89,3 +89,50 @@ test('warm + down -> stale:unreachable, still serves prior CVEs', async () => {
   expect(r.sources.nvd).toMatchObject({ state: 'stale', reason: 'unreachable' });
   expect(r.cveIds).toEqual(['CVE-7']);
 });
+
+// --- C4b fan-out (NVD + OSV) ---
+function osvSlot(impl: () => SourceResult, enabled = true): MatchSlot & { source: ReturnType<typeof stubMatchSource> } {
+  return { id: 'osv', identityKind: 'purl', source: stubMatchSource('osv', 'purl', impl), enabled, ttlMs: TTL };
+}
+function depsN(slots: MatchSlot[]): ResolveDeps {
+  return { fetchFn: globalThis.fetch, now: fixedClock(NOW), slots };
+}
+const BOTH = { cpe: 'cpe:2.3:a:v:p:1', purl: 'pkg:npm/foo@1.0.0' };
+
+test('cpe+purl asset -> union deduped across both sources', async () => {
+  const nvd = slot(() => ({ ok: true, cveIds: ['CVE-A', 'CVE-X'] }));
+  const osv = osvSlot(() => ({ ok: true, cveIds: ['CVE-B', 'CVE-X'] }));
+  const r = await warmAndResolve(handle.db, TEST_ORG_ID, [BOTH], {}, depsN([nvd, osv]));
+  expect([...r.cveIds].sort()).toEqual(['CVE-A', 'CVE-B', 'CVE-X']); // CVE-X deduped
+  expect(r.sources.nvd?.state).toBe('ok');
+  expect(r.sources.osv?.state).toBe('ok');
+  expect(nvd.source.calls).toBe(1);
+  expect(osv.source.calls).toBe(1);
+});
+
+test('purl-only asset -> OSV only (NVD not applicable)', async () => {
+  const nvd = slot(() => ({ ok: true, cveIds: ['SHOULD-NOT'] }));
+  const osv = osvSlot(() => ({ ok: true, cveIds: ['CVE-B'] }));
+  const r = await warmAndResolve(handle.db, TEST_ORG_ID, [{ purl: 'pkg:npm/foo@1.0.0' }], {}, depsN([nvd, osv]));
+  expect(nvd.source.calls).toBe(0);
+  expect(r.sources.nvd?.counts.identities).toBe(0);
+  expect(osv.source.calls).toBe(1);
+  expect(r.cveIds).toEqual(['CVE-B']);
+});
+
+test('OSV down + NVD ok -> NVD edges served, OSV unavailable (per-source independence)', async () => {
+  const nvd = slot(() => ({ ok: true, cveIds: ['CVE-A'] }));
+  const osv = osvSlot(() => ({ ok: false, reason: 'Network' }));
+  const r = await warmAndResolve(handle.db, TEST_ORG_ID, [BOTH], {}, depsN([nvd, osv]));
+  expect(r.cveIds).toEqual(['CVE-A']);
+  expect(r.sources.nvd?.state).toBe('ok');
+  expect(r.sources.osv).toMatchObject({ state: 'unavailable', counts: { failed: 1 } });
+});
+
+test('versionless purl -> OSV skipped (no call, not applicable)', async () => {
+  const osv = osvSlot(() => ({ ok: true, cveIds: ['CVE-B'] }));
+  const r = await warmAndResolve(handle.db, TEST_ORG_ID, [{ purl: 'pkg:npm/foo' }], {}, depsN([osv]));
+  expect(osv.source.calls).toBe(0);
+  expect(r.sources.osv?.counts.identities).toBe(0);
+  expect(r.cveIds).toEqual([]);
+});

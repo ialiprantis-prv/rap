@@ -1,0 +1,3 @@
+{
+  "vulns": "this should be an array — present to force a schema-parse failure"
+}

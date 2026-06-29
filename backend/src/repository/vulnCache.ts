@@ -5,13 +5,23 @@ import { and, eq } from 'drizzle-orm';
 import type { AppDb } from '../db/client';
 import { vulnMatchEdge, vulnSourceCve, vulnSourceMatch } from '../db/schema';
 import type { VulnSourceCve, VulnSourceMatch } from '../db/schema';
-import type { AssetIdentity, IdentityKind, ServedState, SourceId } from '../sources/types';
+import { canonicalIdentityValue, normalizeIdentityKind, normalizeSourceId } from '../sources/normalize';
+import type { AssetIdentity, CveData, IdentityKind, ServedState, SourceId } from '../sources/types';
 
 export interface MatchKey {
   orgId: string;
   source: SourceId;
   identityKind: IdentityKind;
   identityValue: string;
+}
+
+/** Canonicalise source + identity_kind so a mis-cased variant can never collide. */
+function normMatchKey(k: MatchKey): MatchKey {
+  return { ...k, source: normalizeSourceId(k.source), identityKind: normalizeIdentityKind(k.identityKind) };
+}
+
+function normCveKey(k: CveKey): CveKey {
+  return { ...k, source: normalizeSourceId(k.source) };
 }
 
 export interface CacheStateResult {
@@ -48,11 +58,12 @@ function whereMatch(k: MatchKey) {
   );
 }
 
-export function getMatchHeader(db: AppDb, k: MatchKey): VulnSourceMatch | undefined {
-  return db.select().from(vulnSourceMatch).where(whereMatch(k)).get();
+export function getMatchHeader(db: AppDb, key: MatchKey): VulnSourceMatch | undefined {
+  return db.select().from(vulnSourceMatch).where(whereMatch(normMatchKey(key))).get();
 }
 
-export function getEdges(db: AppDb, k: MatchKey): string[] {
+export function getEdges(db: AppDb, key: MatchKey): string[] {
+  const k = normMatchKey(key);
   const rows = db
     .select({ cveId: vulnMatchEdge.cveId })
     .from(vulnMatchEdge)
@@ -71,9 +82,10 @@ export function getEdges(db: AppDb, k: MatchKey): string[] {
 /** Atomically replaces the match header and its CVE edges on a successful fetch. */
 export function upsertMatchSuccess(
   db: AppDb,
-  k: MatchKey,
+  key: MatchKey,
   input: { cveIds: string[]; fetchedAt: number; expiresAt: number },
 ): void {
+  const k = normMatchKey(key);
   db.transaction((tx) => {
     tx.insert(vulnSourceMatch)
       .values({ ...k, fetchedAt: input.fetchedAt, expiresAt: input.expiresAt, lastAttemptAt: input.fetchedAt, lastStatus: 'ok', lastError: null })
@@ -101,7 +113,8 @@ export function upsertMatchSuccess(
 }
 
 /** Records a failed match attempt; KEEPS any existing edges and prior success. */
-export function recordMatchFailure(db: AppDb, k: MatchKey, at: number, error: string): void {
+export function recordMatchFailure(db: AppDb, key: MatchKey, at: number, error: string): void {
+  const k = normMatchKey(key);
   db.insert(vulnSourceMatch)
     .values({ ...k, fetchedAt: null, expiresAt: null, lastAttemptAt: at, lastStatus: 'error', lastError: error })
     .onConflictDoUpdate({
@@ -133,8 +146,10 @@ function getEdgesAnySource(db: AppDb, orgId: string, identityKind: IdentityKind,
 
 export function identityPairs(identity: AssetIdentity): [IdentityKind, string][] {
   const pairs: [IdentityKind, string][] = [];
-  if (identity.cpe) pairs.push(['cpe', identity.cpe]);
-  if (identity.purl) pairs.push(['purl', identity.purl]);
+  const cpe = canonicalIdentityValue('cpe', identity);
+  if (cpe) pairs.push(['cpe', cpe]);
+  const purl = canonicalIdentityValue('purl', identity);
+  if (purl) pairs.push(['purl', purl]);
   return pairs;
 }
 
@@ -144,7 +159,8 @@ export interface CveKey {
   cveId: string;
 }
 
-export function getCveEnrich(db: AppDb, k: CveKey): VulnSourceCve | undefined {
+export function getCveEnrich(db: AppDb, key: CveKey): VulnSourceCve | undefined {
+  const k = normCveKey(key);
   return db
     .select()
     .from(vulnSourceCve)
@@ -154,9 +170,10 @@ export function getCveEnrich(db: AppDb, k: CveKey): VulnSourceCve | undefined {
 
 export function upsertCveEnrich(
   db: AppDb,
-  k: CveKey,
-  input: { payload: { cvss?: number }; fetchedAt: number; expiresAt: number },
+  key: CveKey,
+  input: { payload: CveData; fetchedAt: number; expiresAt: number },
 ): void {
+  const k = normCveKey(key);
   db.insert(vulnSourceCve)
     .values({ ...k, payload: input.payload, fetchedAt: input.fetchedAt, expiresAt: input.expiresAt, lastAttemptAt: input.fetchedAt, lastStatus: 'ok', lastError: null })
     .onConflictDoUpdate({
@@ -166,7 +183,8 @@ export function upsertCveEnrich(
     .run();
 }
 
-export function recordCveFailure(db: AppDb, k: CveKey, at: number, error: string): void {
+export function recordCveFailure(db: AppDb, key: CveKey, at: number, error: string): void {
+  const k = normCveKey(key);
   db.insert(vulnSourceCve)
     .values({ ...k, payload: null, fetchedAt: null, expiresAt: null, lastAttemptAt: at, lastStatus: 'error', lastError: error })
     .onConflictDoUpdate({

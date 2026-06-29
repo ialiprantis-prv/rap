@@ -18,9 +18,13 @@ export type IdentityKind = 'cpe' | 'purl';
 
 export type SourceFailureReason = 'Timeout' | 'RateLimited' | 'Http' | 'Parse' | 'Network';
 
-/** Per-CVE data carried alongside a match/enrich (cvss cached now for C6). */
+/**
+ * Per-CVE data carried alongside a match/enrich (cached now for C6, unconsumed).
+ * cvss is a base score (NVD); cvssVector is a CVSS vector string (OSV).
+ */
 export interface CveData {
   cvss?: number;
+  cvssVector?: string;
 }
 
 export type SourceResult =

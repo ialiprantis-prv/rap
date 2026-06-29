@@ -28,9 +28,14 @@ const EnvSchema = z.object({
   RAP_SOURCE_NVD_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   NVD_RATE_MAX: z.coerce.number().int().positive().default(5), // 50 with an API key
   NVD_RATE_WINDOW_MS: z.coerce.number().int().positive().default(30000),
+  OSV_BASE_URL: z.string().min(1).default('https://api.osv.dev'),
+  RAP_SOURCE_OSV_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  OSV_RATE_MAX: z.coerce.number().int().positive().default(50),
+  OSV_RATE_WINDOW_MS: z.coerce.number().int().positive().default(10000),
   SOURCE_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   SOURCE_HTTP_RETRIES: z.coerce.number().int().nonnegative().default(3),
   VULN_CACHE_TTL_NVD_MS: z.coerce.number().int().positive().default(86400000), // 24h
+  VULN_CACHE_TTL_OSV_MS: z.coerce.number().int().positive().default(86400000), // 24h
 });
 
 export interface Config {
@@ -56,9 +61,14 @@ export interface Config {
   sourceNvdEnabled: boolean;
   nvdRateMax: number;
   nvdRateWindowMs: number;
+  osvBaseUrl: string;
+  sourceOsvEnabled: boolean;
+  osvRateMax: number;
+  osvRateWindowMs: number;
   sourceHttpTimeoutMs: number;
   sourceHttpRetries: number;
   vulnCacheTtlNvdMs: number;
+  vulnCacheTtlOsvMs: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -86,8 +96,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     sourceNvdEnabled: parsed.RAP_SOURCE_NVD_ENABLED,
     nvdRateMax: parsed.NVD_RATE_MAX,
     nvdRateWindowMs: parsed.NVD_RATE_WINDOW_MS,
+    osvBaseUrl: parsed.OSV_BASE_URL,
+    sourceOsvEnabled: parsed.RAP_SOURCE_OSV_ENABLED,
+    osvRateMax: parsed.OSV_RATE_MAX,
+    osvRateWindowMs: parsed.OSV_RATE_WINDOW_MS,
     sourceHttpTimeoutMs: parsed.SOURCE_HTTP_TIMEOUT_MS,
     sourceHttpRetries: parsed.SOURCE_HTTP_RETRIES,
     vulnCacheTtlNvdMs: parsed.VULN_CACHE_TTL_NVD_MS,
+    vulnCacheTtlOsvMs: parsed.VULN_CACHE_TTL_OSV_MS,
   };
 }
