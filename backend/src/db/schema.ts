@@ -153,7 +153,19 @@ export const vulnSourceCve = sqliteTable(
     orgId: text('org_id').notNull(),
     source: text('source').notNull(),
     cveId: text('cve_id').notNull(),
-    payload: text('payload', { mode: 'json' }).$type<{ cvss?: number; cvssVector?: string }>(),
+    payload: text('payload', { mode: 'json' }).$type<{
+      cvss?: number;
+      cvssVector?: string;
+      epss?: number;
+      percentile?: number;
+      epssDate?: string;
+      inKev?: boolean;
+      kevDateAdded?: string;
+      kevDueDate?: string;
+      ransomware?: boolean;
+      euvdId?: string;
+      references?: string;
+    }>(),
     fetchedAt: integer('fetched_at'),
     expiresAt: integer('expires_at'),
     lastAttemptAt: integer('last_attempt_at').notNull(),

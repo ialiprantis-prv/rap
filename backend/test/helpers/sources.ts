@@ -1,6 +1,6 @@
 import type { DbHandle } from '../../src/db/client';
 import { vulnMatchEdge, vulnSourceCve, vulnSourceMatch } from '../../src/db/schema';
-import type { FetchFn, IdentityKind, SourceId, SourceResult, VulnMatchSource } from '../../src/sources/types';
+import type { CveData, FetchFn, IdentityKind, SourceId, SourceResult, VulnEnrichSource, VulnMatchSource } from '../../src/sources/types';
 import { TEST_ORG_ID } from './app';
 
 /** Constant clock. */
@@ -76,6 +76,21 @@ export function stubMatchSource(
   return s;
 }
 
+/** A controllable enrich source for enrich-service tests; records the CVE ids it was asked for. */
+export function stubEnrichSource(id: SourceId, impl: (cveIds: string[]) => SourceResult): VulnEnrichSource & { calls: number; lastCveIds: string[] } {
+  const s = {
+    id,
+    calls: 0,
+    lastCveIds: [] as string[],
+    enrich(cveIds: string[]) {
+      s.calls++;
+      s.lastCveIds = cveIds;
+      return Promise.resolve(impl(cveIds));
+    },
+  };
+  return s;
+}
+
 export interface SeedHeaderInput {
   source?: SourceId;
   identityKind?: IdentityKind;
@@ -116,5 +131,34 @@ export function seedCveEnrich(handle: DbHandle, cveId: string, cvss: number, sou
   handle.db
     .insert(vulnSourceCve)
     .values({ orgId: TEST_ORG_ID, source, cveId, payload: { cvss }, fetchedAt: 0, expiresAt: 1, lastAttemptAt: 0, lastStatus: 'ok', lastError: null })
+    .run();
+}
+
+export interface SeedCveRowInput {
+  source: SourceId;
+  cveId: string;
+  payload?: CveData | null;
+  fetchedAt?: number | null;
+  expiresAt?: number | null;
+  lastAttemptAt?: number;
+  lastStatus?: 'ok' | 'error';
+  lastError?: string | null;
+}
+
+/** Seed a vuln_source_cve row with explicit freshness, for enrich-service tests. */
+export function seedCveRow(handle: DbHandle, input: SeedCveRowInput): void {
+  handle.db
+    .insert(vulnSourceCve)
+    .values({
+      orgId: TEST_ORG_ID,
+      source: input.source,
+      cveId: input.cveId,
+      payload: input.payload ?? null,
+      fetchedAt: input.fetchedAt ?? null,
+      expiresAt: input.expiresAt ?? null,
+      lastAttemptAt: input.lastAttemptAt ?? input.fetchedAt ?? 0,
+      lastStatus: input.lastStatus ?? 'ok',
+      lastError: input.lastError ?? null,
+    })
     .run();
 }

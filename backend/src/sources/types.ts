@@ -20,15 +20,28 @@ export type SourceFailureReason = 'Timeout' | 'RateLimited' | 'Http' | 'Parse' |
 
 /**
  * Per-CVE data carried alongside a match/enrich (cached now for C6, unconsumed).
- * cvss is a base score (NVD); cvssVector is a CVSS vector string (OSV).
+ * A SUPERSET across every source; each cache row is interpreted per its `source`,
+ * not as a merge. cvss is a base score (NVD/EUVD); cvssVector is a CVSS vector
+ * string (OSV/EUVD). epss/percentile/epssDate are FIRST.org EPSS (or EUVD).
+ * inKev/kevDateAdded/kevDueDate/ransomware are CISA KEV (inKev:false records
+ * "checked, not in KEV"). euvdId/references are EUVD.
  */
 export interface CveData {
   cvss?: number;
   cvssVector?: string;
+  epss?: number;
+  percentile?: number;
+  epssDate?: string;
+  inKev?: boolean;
+  kevDateAdded?: string;
+  kevDueDate?: string;
+  ransomware?: boolean;
+  euvdId?: string;
+  references?: string;
 }
 
 export type SourceResult =
-  | { ok: true; cveIds: string[]; cveData?: Map<string, CveData> }
+  | { ok: true; cveIds: string[]; cveData?: Map<string, CveData>; failed?: string[] }
   | { ok: false; reason: SourceFailureReason };
 
 export type FetchFn = typeof globalThis.fetch;

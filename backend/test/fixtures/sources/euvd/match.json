@@ -1,0 +1,14 @@
+{
+  "items": [
+    {
+      "id": "EUVD-2024-1234",
+      "description": "Remote code execution in Acme Widget.",
+      "aliases": "CVE-2024-0001\nGHSA-aaaa-bbbb-cccc",
+      "baseScore": 9.8,
+      "baseScoreVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "epss": 0.97012,
+      "references": "https://example.com/advisory/1\nhttps://nvd.nist.gov/vuln/detail/CVE-2024-0001"
+    }
+  ],
+  "total": 1
+}

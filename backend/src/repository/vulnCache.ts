@@ -1,7 +1,7 @@
 // Vulnerability cache repository (C4a). Functional, org-scoped. Drizzle is
 // confined here + db/*. Reads are cache-only (D4); freshness/served-state is a
 // pure function so it is independently testable with an injected clock.
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { AppDb } from '../db/client';
 import { vulnMatchEdge, vulnSourceCve, vulnSourceMatch } from '../db/schema';
 import type { VulnSourceCve, VulnSourceMatch } from '../db/schema';
@@ -166,6 +166,20 @@ export function getCveEnrich(db: AppDb, key: CveKey): VulnSourceCve | undefined 
     .from(vulnSourceCve)
     .where(and(eq(vulnSourceCve.orgId, k.orgId), eq(vulnSourceCve.source, k.source), eq(vulnSourceCve.cveId, k.cveId)))
     .get();
+}
+
+/** All cached enrich rows for (org, source) over a CVE set -> keyed by cveId. */
+export function getCveEnrichSet(db: AppDb, orgId: string, source: SourceId, cveIds: string[]): Map<string, VulnSourceCve> {
+  const out = new Map<string, VulnSourceCve>();
+  if (cveIds.length === 0) return out;
+  const src = normalizeSourceId(source);
+  const rows = db
+    .select()
+    .from(vulnSourceCve)
+    .where(and(eq(vulnSourceCve.orgId, orgId), eq(vulnSourceCve.source, src), inArray(vulnSourceCve.cveId, cveIds)))
+    .all();
+  for (const r of rows) out.set(r.cveId, r);
+  return out;
 }
 
 export function upsertCveEnrich(

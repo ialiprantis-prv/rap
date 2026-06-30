@@ -36,6 +36,28 @@ const EnvSchema = z.object({
   SOURCE_HTTP_RETRIES: z.coerce.number().int().nonnegative().default(3),
   VULN_CACHE_TTL_NVD_MS: z.coerce.number().int().positive().default(86400000), // 24h
   VULN_CACHE_TTL_OSV_MS: z.coerce.number().int().positive().default(86400000), // 24h
+  // CVE-keyed enrichment sources (C4c). EPSS = FIRST.org; KEV = CISA catalog;
+  // EUVD = ENISA (best-effort cross-reference). None require a secret.
+  EPSS_BASE_URL: z.string().min(1).default('https://api.first.org'),
+  RAP_SOURCE_EPSS_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  EPSS_BATCH_SIZE: z.coerce.number().int().positive().default(100),
+  EPSS_RATE_MAX: z.coerce.number().int().positive().default(30),
+  EPSS_RATE_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  KEV_FEED_URL: z
+    .string()
+    .min(1)
+    .default('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'),
+  RAP_SOURCE_KEV_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  KEV_RATE_MAX: z.coerce.number().int().positive().default(10),
+  KEV_RATE_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  EUVD_BASE_URL: z.string().min(1).default('https://euvdservices.enisa.europa.eu/api'),
+  RAP_SOURCE_EUVD_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  EUVD_RATE_MAX: z.coerce.number().int().positive().default(5),
+  EUVD_RATE_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  EUVD_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(30000), // EUVD is slow
+  VULN_CACHE_TTL_EPSS_MS: z.coerce.number().int().positive().default(86400000), // 24h
+  VULN_CACHE_TTL_KEV_MS: z.coerce.number().int().positive().default(86400000), // 24h
+  VULN_CACHE_TTL_EUVD_MS: z.coerce.number().int().positive().default(86400000), // 24h
 });
 
 export interface Config {
@@ -69,6 +91,23 @@ export interface Config {
   sourceHttpRetries: number;
   vulnCacheTtlNvdMs: number;
   vulnCacheTtlOsvMs: number;
+  epssBaseUrl: string;
+  sourceEpssEnabled: boolean;
+  epssBatchSize: number;
+  epssRateMax: number;
+  epssRateWindowMs: number;
+  kevFeedUrl: string;
+  sourceKevEnabled: boolean;
+  kevRateMax: number;
+  kevRateWindowMs: number;
+  euvdBaseUrl: string;
+  sourceEuvdEnabled: boolean;
+  euvdRateMax: number;
+  euvdRateWindowMs: number;
+  euvdHttpTimeoutMs: number;
+  vulnCacheTtlEpssMs: number;
+  vulnCacheTtlKevMs: number;
+  vulnCacheTtlEuvdMs: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -104,5 +143,22 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     sourceHttpRetries: parsed.SOURCE_HTTP_RETRIES,
     vulnCacheTtlNvdMs: parsed.VULN_CACHE_TTL_NVD_MS,
     vulnCacheTtlOsvMs: parsed.VULN_CACHE_TTL_OSV_MS,
+    epssBaseUrl: parsed.EPSS_BASE_URL,
+    sourceEpssEnabled: parsed.RAP_SOURCE_EPSS_ENABLED,
+    epssBatchSize: parsed.EPSS_BATCH_SIZE,
+    epssRateMax: parsed.EPSS_RATE_MAX,
+    epssRateWindowMs: parsed.EPSS_RATE_WINDOW_MS,
+    kevFeedUrl: parsed.KEV_FEED_URL,
+    sourceKevEnabled: parsed.RAP_SOURCE_KEV_ENABLED,
+    kevRateMax: parsed.KEV_RATE_MAX,
+    kevRateWindowMs: parsed.KEV_RATE_WINDOW_MS,
+    euvdBaseUrl: parsed.EUVD_BASE_URL,
+    sourceEuvdEnabled: parsed.RAP_SOURCE_EUVD_ENABLED,
+    euvdRateMax: parsed.EUVD_RATE_MAX,
+    euvdRateWindowMs: parsed.EUVD_RATE_WINDOW_MS,
+    euvdHttpTimeoutMs: parsed.EUVD_HTTP_TIMEOUT_MS,
+    vulnCacheTtlEpssMs: parsed.VULN_CACHE_TTL_EPSS_MS,
+    vulnCacheTtlKevMs: parsed.VULN_CACHE_TTL_KEV_MS,
+    vulnCacheTtlEuvdMs: parsed.VULN_CACHE_TTL_EUVD_MS,
   };
 }
