@@ -45,7 +45,7 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   Mitigations→Dashboard→Export (+ new Dependencies & Cascading screen).
 
 ## Current state
-- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = d5ad8ea.
+- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = 2ab0147.
 - C0 DONE (committed): scaffold monorepo + engine kernel ported verbatim from v3; parity tests
   green. Severity = round(CVSS/2) (v3 C4 live rule).
 - C0.1 DONE (committed): clean V4 docs + frozen v3 archive + this CLAUDE.md.
@@ -113,7 +113,19 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
     out per identity x enabled match source, union deduped by cve_id with per-source provenance,
     per-source independent. No DB migration (reuses the three C4a tables; payload $type widened to
     {cvss?,cvssVector?}). No new dependency. [d5ad8ea]
-  - NEXT: C4c — EPSS + KEV + EUVD enrichment (build-ladder §C4).
+  - C4c DONE (committed): EPSS + KEV + EUVD enrichment (the VulnEnrichSource side). backend/src/
+    sources/: epss.ts (EPSS API, comma-batched <=100/call -> {epss,percentile,date}), kev.ts (full
+    CISA KEV catalog fetched once per pass, projected to per-CVE {inKev,dateAdded,dueDate,ransomware}
+    rows incl. inKev=false), euvd.ts (BEST-EFFORT: /api/search?text={cve} + exact-alias filter;
+    per-CVE failure resilience via failed[] so one poison CVE can't block the set; text-searches-
+    descriptions caveat retained, empty results expected). New sources/enrich.ts enrichResolved
+    (db,orgId,cveIds,{force},deps) mirrors warmAndResolve: per enabled enrich source, cacheState-
+    checks each vuln_source_cve row, fetches only stale/missing (all on force), writes ok-empty for
+    queried-but-no-datum CVEs, recordCveFailure per failed CVE; per-source independent; cache-only
+    reads; no merge/precedence (resolved view / C6). Service-layer only -- NO public endpoint (C4d).
+    No DB migration (vuln_source_cve payload $type widened to a per-source optional superset). No new
+    dependency; injected-fetch fixtured tests. [2ab0147]
+  - NEXT: C4d -- async refresh endpoint + worker (build-ladder §C4).
 
 ## Quick start
 - npm install at repo root (workspaces). engine/: npm run build / npm test.
