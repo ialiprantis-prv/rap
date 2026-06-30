@@ -45,7 +45,7 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
   Mitigations→Dashboard→Export (+ new Dependencies & Cascading screen).
 
 ## Current state
-- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = 2ab0147.
+- Branch main. Remote: ialiprantis-prv/rap (private). origin/main = 4e5f95f.
 - C0 DONE (committed): scaffold monorepo + engine kernel ported verbatim from v3; parity tests
   green. Severity = round(CVSS/2) (v3 C4 live rule).
 - C0.1 DONE (committed): clean V4 docs + frozen v3 archive + this CLAUDE.md.
@@ -126,6 +126,23 @@ Authoritative source docs in docs/source/ (scope-lock, spec, integration matrix,
     No DB migration (vuln_source_cve payload $type widened to a per-source optional superset). No new
     dependency; injected-fetch fixtured tests. [2ab0147]
   - NEXT: C4d -- async refresh endpoint + worker (build-ladder §C4).
+
+## Carry-forward / open items (do not lose)
+- C4d cross-slice seam: the async refresh endpoint resolves over an assessment's AssetIdentity[], but
+  the assets table is C5. C4d builds the full job/worker/endpoint and resolves via a
+  getAssessmentIdentities() seam that returns [] until C5; tests seed identities directly. Goes live with C5.
+- C6 severity + precedence: NVD cvss and OSV/EUVD CVSS vector strings are CACHED in vuln_source_cve, NOT
+  consumed. C6 adds the CVSS-vector->base-score parse + severity = round(CVSS/2), and multi-source
+  precedence (NVD CVSS primary; EPSS authoritative over EUVD's secondhand epss). No merge exists today —
+  each (org,source,cve) row is independent (resolved view / C6).
+- EUVD best-effort caveat: /api/search `text` is documented to search descriptions, not aliases, and a
+  live probe timed out; EUVD enrichment may be low-yield until validated against the live API
+  (GET /api/search?text=CVE-... and confirm items[].aliases contains the CVE). Revisit if unworkable (V2).
+- V1 gap (also in build-ladder out-of-scope): OSV GHSA/PYSEC-only advisories (no CVE alias) are not
+  ingested (cache + kernel are CVE-keyed). V2 candidate.
+- Cosmetic/low-pri: optional DB CHECK on last_status enum columns (currently TS-enum-only, matching the
+  role columns); license schema issuedAt allows a TZ offset while expiry requires UTC Z and there is no
+  issuedAt<=expiry sanity check (C3c); test/auth.admin.test.ts is near the 220 soft cap — split when it grows.
 
 ## Quick start
 - npm install at repo root (workspaces). engine/: npm run build / npm test.

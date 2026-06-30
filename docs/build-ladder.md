@@ -65,6 +65,22 @@ attempt) / unavailable (cold+down) / disabled. Identity-driven warmAndResolve (N
 cache-only and fetches just the expired/missing (all on force), per source independently. No public
 endpoint yet, no new dependency (global fetch); tests use an injected fetchFn + fixtures + clock.
 
+C4b (complete): OSV purl-match. backend/src/sources/osv.ts is a VulnMatchSource (identityKind 'purl')
+querying OSV /v1/query once per identity (full records, not querybatch; version-XOR-versioned-purl rule).
+OSV ids are GHSA/PYSEC/OSV with the CVE in aliases -> one vuln_match_edge per CVE alias; records with no
+CVE alias are dropped (a documented V1 gap). sources/normalize.ts adds canonicalIdentityValue (a
+version-bearing cache key so two versions cannot collide) and the N-2 source/identity_kind lowercase
+normalizer applied at every cache read/write. resolve fans out NVD + OSV, union deduped by cve_id with
+per-source provenance. No DB migration (reuses the C4a tables; payload $type widened to {cvss?,cvssVector?}).
+
+C4c (complete): EPSS + KEV + EUVD enrichment (the VulnEnrichSource side) + the sources/enrich.ts
+enrichResolved fan-out. EPSS comma-batched (<=100/call); KEV full CISA catalog fetched once per pass,
+projected to per-CVE {inKev,...} rows (incl. inKev=false); EUVD best-effort /api/search?text={cve} +
+exact-alias filter with per-CVE failure isolation (SourceResult.failed[] so one poison CVE cannot block
+the set; a full outage -> unavailable/stale, not silently ok-empty). Each (org,source,cve) row is
+independent; no merge/precedence (resolved view / C6). Service-layer only (no public endpoint until C4d).
+No DB migration (vuln_source_cve payload $type widened to a per-source optional superset).
+
 ---
 
 ## V1 scope
@@ -89,7 +105,7 @@ V1 (D3.1 deliverable) includes:
 - Built-in username/password accounts, 4 roles, server-enforced.
 - Offline signed license verification (no phone-home).
 - Single Docker image, SaaS and on-prem delivery from the same build.
-- EPSS and KEV enrichment.
+- EPSS, KEV, and EUVD (best-effort) enrichment.
 
 ---
 
@@ -221,7 +237,7 @@ C3c (committed): offline signed license verification at startup. Five locked dec
   license; esbuild bundles only the prod entry, so the dev key is provably absent from the prod
   bundle. No DB migration (the license is file-verified and held in app state).
 
-### C4 (in progress — C4a committed)
+### C4 (in progress — C4a/C4b/C4c committed; C4d next)
 
 Server-side source clients, sliced C4a-C4d. Locked pre-screen decisions D1-D7:
 - D1: four slices; offline degradation baked into the cache from C4a, not a tail feature.
